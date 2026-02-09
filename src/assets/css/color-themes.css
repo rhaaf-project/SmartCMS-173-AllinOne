@@ -1,0 +1,472 @@
+/* Color Theme Overrides */
+/* These classes override the primary color throughout the application */
+
+/* Orange Theme */
+body.theme-orange .btn-primary {
+    background-color: #f97316 !important;
+    border-color: #f97316 !important;
+}
+
+body.theme-orange .btn-primary:hover {
+    background-color: #ea580c !important;
+    border-color: #ea580c !important;
+}
+
+body.theme-orange .btn-outline-primary {
+    color: #f97316 !important;
+    border-color: #f97316 !important;
+}
+
+body.theme-orange .btn-outline-primary:hover {
+    background-color: #f97316 !important;
+    color: white !important;
+}
+
+body.theme-orange .text-primary {
+    color: #f97316 !important;
+}
+
+body.theme-orange .bg-primary {
+    background-color: #f97316 !important;
+}
+
+body.theme-orange .border-primary {
+    border-color: #f97316 !important;
+}
+
+body.theme-orange .badge-outline-primary {
+    color: #f97316 !important;
+    border-color: #f97316 !important;
+}
+
+body.theme-orange .form-checkbox:checked,
+body.theme-orange .form-radio:checked {
+    background-color: #f97316 !important;
+    border-color: #f97316 !important;
+}
+
+/* Red Theme */
+body.theme-red .btn-primary {
+    background-color: #ef4444 !important;
+    border-color: #ef4444 !important;
+}
+
+body.theme-red .btn-primary:hover {
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+}
+
+body.theme-red .btn-outline-primary {
+    color: #ef4444 !important;
+    border-color: #ef4444 !important;
+}
+
+body.theme-red .btn-outline-primary:hover {
+    background-color: #ef4444 !important;
+    color: white !important;
+}
+
+body.theme-red .text-primary {
+    color: #ef4444 !important;
+}
+
+body.theme-red .bg-primary {
+    background-color: #ef4444 !important;
+}
+
+body.theme-red .border-primary {
+    border-color: #ef4444 !important;
+}
+
+body.theme-red .badge-outline-primary {
+    color: #ef4444 !important;
+    border-color: #ef4444 !important;
+}
+
+body.theme-red .form-checkbox:checked,
+body.theme-red .form-radio:checked {
+    background-color: #ef4444 !important;
+    border-color: #ef4444 !important;
+}
+
+/* Green Theme */
+body.theme-green .btn-primary {
+    background-color: #22c55e !important;
+    border-color: #22c55e !important;
+}
+
+body.theme-green .btn-primary:hover {
+    background-color: #16a34a !important;
+    border-color: #16a34a !important;
+}
+
+body.theme-green .btn-outline-primary {
+    color: #22c55e !important;
+    border-color: #22c55e !important;
+}
+
+body.theme-green .btn-outline-primary:hover {
+    background-color: #22c55e !important;
+    color: white !important;
+}
+
+body.theme-green .text-primary {
+    color: #22c55e !important;
+}
+
+body.theme-green .bg-primary {
+    background-color: #22c55e !important;
+}
+
+body.theme-green .border-primary {
+    border-color: #22c55e !important;
+}
+
+body.theme-green .badge-outline-primary {
+    color: #22c55e !important;
+    border-color: #22c55e !important;
+}
+
+body.theme-green .form-checkbox:checked,
+body.theme-green .form-radio:checked {
+    background-color: #22c55e !important;
+    border-color: #22c55e !important;
+}
+
+/* Purple Theme */
+body.theme-purple .btn-primary {
+    background-color: #8b5cf6 !important;
+    border-color: #8b5cf6 !important;
+}
+
+body.theme-purple .btn-primary:hover {
+    background-color: #7c3aed !important;
+    border-color: #7c3aed !important;
+}
+
+body.theme-purple .btn-outline-primary {
+    color: #8b5cf6 !important;
+    border-color: #8b5cf6 !important;
+}
+
+body.theme-purple .btn-outline-primary:hover {
+    background-color: #8b5cf6 !important;
+    color: white !important;
+}
+
+body.theme-purple .text-primary {
+    color: #8b5cf6 !important;
+}
+
+body.theme-purple .bg-primary {
+    background-color: #8b5cf6 !important;
+}
+
+body.theme-purple .border-primary {
+    border-color: #8b5cf6 !important;
+}
+
+body.theme-purple .badge-outline-primary {
+    color: #8b5cf6 !important;
+    border-color: #8b5cf6 !important;
+}
+
+body.theme-purple .form-checkbox:checked,
+body.theme-purple .form-radio:checked {
+    background-color: #8b5cf6 !important;
+    border-color: #8b5cf6 !important;
+}
+
+/* Cyan Theme */
+body.theme-cyan .btn-primary {
+    background-color: #06b6d4 !important;
+    border-color: #06b6d4 !important;
+}
+
+body.theme-cyan .btn-primary:hover {
+    background-color: #0891b2 !important;
+    border-color: #0891b2 !important;
+}
+
+body.theme-cyan .btn-outline-primary {
+    color: #06b6d4 !important;
+    border-color: #06b6d4 !important;
+}
+
+body.theme-cyan .btn-outline-primary:hover {
+    background-color: #06b6d4 !important;
+    color: white !important;
+}
+
+body.theme-cyan .text-primary {
+    color: #06b6d4 !important;
+}
+
+body.theme-cyan .bg-primary {
+    background-color: #06b6d4 !important;
+}
+
+body.theme-cyan .border-primary {
+    border-color: #06b6d4 !important;
+}
+
+body.theme-cyan .badge-outline-primary {
+    color: #06b6d4 !important;
+    border-color: #06b6d4 !important;
+}
+
+body.theme-cyan .form-checkbox:checked,
+body.theme-cyan .form-radio:checked {
+    background-color: #06b6d4 !important;
+    border-color: #06b6d4 !important;
+}
+
+/* Sidebar Active Menu - Orange */
+body.theme-orange .sidebar .nav-item>a.active,
+body.theme-orange .sidebar .nav-item>button.active,
+body.theme-orange .sidebar ul.sub-menu li a.active,
+body.theme-orange .sidebar ul.sub-menu li button.active {
+    color: #f97316 !important;
+}
+
+body.theme-orange .sidebar ul.sub-menu li a.active::before,
+body.theme-orange .sidebar ul.sub-menu li button.active::before {
+    background-color: #f97316 !important;
+}
+
+/* Sidebar Active Menu - Red */
+body.theme-red .sidebar .nav-item>a.active,
+body.theme-red .sidebar .nav-item>button.active,
+body.theme-red .sidebar ul.sub-menu li a.active,
+body.theme-red .sidebar ul.sub-menu li button.active {
+    color: #ef4444 !important;
+}
+
+body.theme-red .sidebar ul.sub-menu li a.active::before,
+body.theme-red .sidebar ul.sub-menu li button.active::before {
+    background-color: #ef4444 !important;
+}
+
+/* Sidebar Active Menu - Green */
+body.theme-green .sidebar .nav-item>a.active,
+body.theme-green .sidebar .nav-item>button.active,
+body.theme-green .sidebar ul.sub-menu li a.active,
+body.theme-green .sidebar ul.sub-menu li button.active {
+    color: #22c55e !important;
+}
+
+body.theme-green .sidebar ul.sub-menu li a.active::before,
+body.theme-green .sidebar ul.sub-menu li button.active::before {
+    background-color: #22c55e !important;
+}
+
+/* Sidebar Active Menu - Purple */
+body.theme-purple .sidebar .nav-item>a.active,
+body.theme-purple .sidebar .nav-item>button.active,
+body.theme-purple .sidebar ul.sub-menu li a.active,
+body.theme-purple .sidebar ul.sub-menu li button.active {
+    color: #8b5cf6 !important;
+}
+
+body.theme-purple .sidebar ul.sub-menu li a.active::before,
+body.theme-purple .sidebar ul.sub-menu li button.active::before {
+    background-color: #8b5cf6 !important;
+}
+
+/* Sidebar Active Menu - Cyan */
+body.theme-cyan .sidebar .nav-item>a.active,
+body.theme-cyan .sidebar .nav-item>button.active,
+body.theme-cyan .sidebar ul.sub-menu li a.active,
+body.theme-cyan .sidebar ul.sub-menu li button.active {
+    color: #06b6d4 !important;
+}
+
+body.theme-cyan .sidebar ul.sub-menu li a.active::before,
+body.theme-cyan .sidebar ul.sub-menu li button.active::before {
+    background-color: #06b6d4 !important;
+}
+
+/* Sidebar Hover Menu - Orange */
+body.theme-orange .sidebar .nav-item>a:hover,
+body.theme-orange .sidebar .nav-item>button:hover,
+body.theme-orange .sidebar ul.sub-menu li a:hover,
+body.theme-orange .sidebar ul.sub-menu li button:hover {
+    color: #f97316 !important;
+}
+
+body.theme-orange .sidebar ul.sub-menu li a:hover::before,
+body.theme-orange .sidebar ul.sub-menu li button:hover::before {
+    background-color: #f97316 !important;
+}
+
+/* Sidebar Hover Menu - Red */
+body.theme-red .sidebar .nav-item>a:hover,
+body.theme-red .sidebar .nav-item>button:hover,
+body.theme-red .sidebar ul.sub-menu li a:hover,
+body.theme-red .sidebar ul.sub-menu li button:hover {
+    color: #ef4444 !important;
+}
+
+body.theme-red .sidebar ul.sub-menu li a:hover::before,
+body.theme-red .sidebar ul.sub-menu li button:hover::before {
+    background-color: #ef4444 !important;
+}
+
+/* Sidebar Hover Menu - Green */
+body.theme-green .sidebar .nav-item>a:hover,
+body.theme-green .sidebar .nav-item>button:hover,
+body.theme-green .sidebar ul.sub-menu li a:hover,
+body.theme-green .sidebar ul.sub-menu li button:hover {
+    color: #22c55e !important;
+}
+
+body.theme-green .sidebar ul.sub-menu li a:hover::before,
+body.theme-green .sidebar ul.sub-menu li button:hover::before {
+    background-color: #22c55e !important;
+}
+
+/* Sidebar Hover Menu - Purple */
+body.theme-purple .sidebar .nav-item>a:hover,
+body.theme-purple .sidebar .nav-item>button:hover,
+body.theme-purple .sidebar ul.sub-menu li a:hover,
+body.theme-purple .sidebar ul.sub-menu li button:hover {
+    color: #8b5cf6 !important;
+}
+
+body.theme-purple .sidebar ul.sub-menu li a:hover::before,
+body.theme-purple .sidebar ul.sub-menu li button:hover::before {
+    background-color: #8b5cf6 !important;
+}
+
+/* Sidebar Hover Menu - Cyan */
+body.theme-cyan .sidebar .nav-item>a:hover,
+body.theme-cyan .sidebar .nav-item>button:hover,
+body.theme-cyan .sidebar ul.sub-menu li a:hover,
+body.theme-cyan .sidebar ul.sub-menu li button:hover {
+    color: #06b6d4 !important;
+}
+
+body.theme-cyan .sidebar ul.sub-menu li a:hover::before,
+body.theme-cyan .sidebar ul.sub-menu li button:hover::before {
+    background-color: #06b6d4 !important;
+}
+
+/* ========================================== */
+/* ICON Hover & Active States for All Themes */
+/* ========================================== */
+
+/* Orange Theme - Icons */
+body.theme-orange .sidebar .nav-item>a:hover svg,
+body.theme-orange .sidebar .nav-item>button:hover svg,
+body.theme-orange .sidebar .nav-item>a.active svg,
+body.theme-orange .sidebar .nav-item>button.active svg {
+    color: #f97316 !important;
+}
+
+/* Red Theme - Icons */
+body.theme-red .sidebar .nav-item>a:hover svg,
+body.theme-red .sidebar .nav-item>button:hover svg,
+body.theme-red .sidebar .nav-item>a.active svg,
+body.theme-red .sidebar .nav-item>button.active svg {
+    color: #ef4444 !important;
+}
+
+/* Green Theme - Icons */
+body.theme-green .sidebar .nav-item>a:hover svg,
+body.theme-green .sidebar .nav-item>button:hover svg,
+body.theme-green .sidebar .nav-item>a.active svg,
+body.theme-green .sidebar .nav-item>button.active svg {
+    color: #22c55e !important;
+}
+
+/* Purple Theme - Icons */
+body.theme-purple .sidebar .nav-item>a:hover svg,
+body.theme-purple .sidebar .nav-item>button:hover svg,
+body.theme-purple .sidebar .nav-item>a.active svg,
+body.theme-purple .sidebar .nav-item>button.active svg {
+    color: #8b5cf6 !important;
+}
+
+/* Cyan Theme - Icons */
+body.theme-cyan .sidebar .nav-item>a:hover svg,
+body.theme-cyan .sidebar .nav-item>button:hover svg,
+body.theme-cyan .sidebar .nav-item>a.active svg,
+body.theme-cyan .sidebar .nav-item>button.active svg {
+    color: #06b6d4 !important;
+}
+
+/* ========================================== */
+/* Menu Text Nuance Colors for Each Theme    */
+/* Subtle tinted colors that match theme     */
+/* ========================================== */
+
+/* Orange Theme - Menu Text Nuance (warm brown-orange) */
+body.theme-orange .sidebar .nav-item>a span,
+body.theme-orange .sidebar .nav-item>button span,
+body.theme-orange .sidebar ul.sub-menu li a,
+body.theme-orange .sidebar ul.sub-menu li button {
+    color: #9a7a65 !important;
+}
+
+/* Red Theme - Menu Text Nuance (dusty rose) */
+body.theme-red .sidebar .nav-item>a span,
+body.theme-red .sidebar .nav-item>button span,
+body.theme-red .sidebar ul.sub-menu li a,
+body.theme-red .sidebar ul.sub-menu li button {
+    color: #957075 !important;
+}
+
+/* Green Theme - Menu Text Nuance (sage green) */
+body.theme-green .sidebar .nav-item>a span,
+body.theme-green .sidebar .nav-item>button span,
+body.theme-green .sidebar ul.sub-menu li a,
+body.theme-green .sidebar ul.sub-menu li button {
+    color: #6a9070 !important;
+}
+
+/* Purple Theme - Menu Text Nuance (muted lavender) */
+body.theme-purple .sidebar .nav-item>a span,
+body.theme-purple .sidebar .nav-item>button span,
+body.theme-purple .sidebar ul.sub-menu li a,
+body.theme-purple .sidebar ul.sub-menu li button {
+    color: #8075a5 !important;
+}
+
+/* Cyan Theme - Menu Text Nuance (muted teal) */
+body.theme-cyan .sidebar .nav-item>a span,
+body.theme-cyan .sidebar .nav-item>button span,
+body.theme-cyan .sidebar ul.sub-menu li a,
+body.theme-cyan .sidebar ul.sub-menu li button {
+    color: #609095 !important;
+}
+
+/* Also update icon default colors to match nuance */
+/* Orange Theme - Icon Nuance */
+body.theme-orange .sidebar .nav-item>a svg,
+body.theme-orange .sidebar .nav-item>button svg {
+    color: #9a7a65 !important;
+}
+
+/* Red Theme - Icon Nuance */
+body.theme-red .sidebar .nav-item>a svg,
+body.theme-red .sidebar .nav-item>button svg {
+    color: #957075 !important;
+}
+
+/* Green Theme - Icon Nuance */
+body.theme-green .sidebar .nav-item>a svg,
+body.theme-green .sidebar .nav-item>button svg {
+    color: #6a9070 !important;
+}
+
+/* Purple Theme - Icon Nuance */
+body.theme-purple .sidebar .nav-item>a svg,
+body.theme-purple .sidebar .nav-item>button svg {
+    color: #8075a5 !important;
+}
+
+/* Cyan Theme - Icon Nuance */
+body.theme-cyan .sidebar .nav-item>a svg,
+body.theme-cyan .sidebar .nav-item>button svg {
+    color: #609095 !important;
+}

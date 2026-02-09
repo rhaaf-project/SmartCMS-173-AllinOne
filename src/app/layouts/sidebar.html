@@ -1,0 +1,420 @@
+<div [ngClass]="{ 'dark text-white-dark': store.semidark }">
+    <nav
+        class="sidebar fixed bottom-0 top-0 z-50 h-full min-h-screen w-[260px] shadow-[5px_0_25px_0_rgba(94,92,154,0.1)] transition-all duration-300">
+        <div class="h-full bg-white dark:bg-[#0e1726]">
+            <div class="flex items-center justify-between px-4 py-3">
+                <a routerLink="/" class="main-logo flex shrink-0 items-center">
+                    <img src="/assets/images/SMART_UCX_logo.jpg" alt="SMART UCX" class="flex-none"
+                        style="max-width: 80%;" />
+                </a>
+            </div>
+            <ng-scrollbar class="relative !h-[calc(100vh-80px)]" appearance="compact">
+                <ul class="relative space-y-0.5 p-4 py-0 pb-20 font-semibold">
+
+                    <!-- 1. Dashboard -->
+                    <li class="menu nav-item">
+                        <a routerLink="/" class="nav-link group" routerLinkActive="active"
+                            [routerLinkActiveOptions]="{exact: true}" (click)="toggleMobileMenu()">
+                            <div class="flex items-center">
+                                <icon-menu-dashboard class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Dashboard</span>
+                            </div>
+                        </a>
+                    </li>
+
+                    <!-- 2. Organization - icon: users/contacts for org structure -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('organization') }"
+                            (click)="toggleAccordion('organization')">
+                            <div class="flex items-center">
+                                <icon-menu-building class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Organization</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('organization') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('organization')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/organization/company" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Company</a></li>
+                                <li><a routerLink="/admin/organization/head-office" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Head Office</a></li>
+                                <li><a routerLink="/admin/organization/branch" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Branch</a></li>
+                                <li><a routerLink="/admin/organization/sub-branch" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Sub Branch</a></li>
+                                <li><a routerLink="/admin/organization/connectivity-diagram" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Connectivity Diagram</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 3. Connectivity - icon: components for connections -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('connectivity') }"
+                            (click)="toggleAccordion('connectivity')">
+                            <div class="flex items-center">
+                                <icon-menu-signal class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Connectivity</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('connectivity') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('connectivity')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/connectivity/call-servers" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Call Server</a></li>
+                                <!-- Feature submenu -->
+                                <li class="accordion menu nav-item">
+                                    <button type="button"
+                                        class="w-full before:h-[5px] before:w-[5px] before:rounded before:bg-gray-300 hover:bg-gray-100 dark:text-[#888ea8] dark:hover:bg-gray-900 ltr:before:mr-2 rtl:before:ml-2"
+                                        (click)="toggleAccordion('feature')">
+                                        Feature
+                                        <div class="ltr:ml-auto rtl:mr-auto"
+                                            [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('feature') }">
+                                            <icon-carets-down [fill]="true" class="h-4 w-4" />
+                                        </div>
+                                    </button>
+                                    <div [@slideDownUp]="!activeDropdown.includes('feature')" class="accordion-content">
+                                        <ul class="sub-menu text-gray-500 !pl-4">
+                                            <li><a routerLink="/admin/connectivity/feature/black-list"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Black
+                                                    List</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/broadcast"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Broadcast</a>
+                                            </li>
+                                            <li><a routerLink="/admin/connectivity/feature/conference"
+                                                    routerLinkActive="active"
+                                                    (click)="toggleMobileMenu()">Conference</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/customs-destination"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Customs
+                                                    Destination</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/ivr"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">IVR</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/misc-destination"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Misc
+                                                    Destination</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/music-on-hold"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Music on
+                                                    Hold</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/paging-intercom"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Paging &
+                                                    Intercom</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/recording"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Recording</a>
+                                            </li>
+                                            <li><a routerLink="/admin/connectivity/feature/ring-group"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Ring
+                                                    Group</a></li>
+                                            <li><a routerLink="/admin/connectivity/feature/time-conditions"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">Time
+                                                    Conditions</a></li>
+                                        </ul>
+                                    </div>
+                                </li>
+                                <!-- Line submenu -->
+                                <li class="accordion menu nav-item">
+                                    <button type="button"
+                                        class="w-full before:h-[5px] before:w-[5px] before:rounded before:bg-gray-300 hover:bg-gray-100 dark:text-[#888ea8] dark:hover:bg-gray-900 ltr:before:mr-2 rtl:before:ml-2"
+                                        (click)="toggleAccordion('line')">
+                                        Line
+                                        <div class="ltr:ml-auto rtl:mr-auto"
+                                            [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('line') }">
+                                            <icon-carets-down [fill]="true" class="h-4 w-4" />
+                                        </div>
+                                    </button>
+                                    <div [@slideDownUp]="!activeDropdown.includes('line')" class="accordion-content">
+                                        <ul class="sub-menu text-gray-500 !pl-4">
+                                            <li><a routerLink="/admin/connectivity/lines" routerLinkActive="active"
+                                                    (click)="toggleMobileMenu()">Line</a></li>
+                                            <li><a routerLink="/admin/connectivity/extensions" routerLinkActive="active"
+                                                    (click)="toggleMobileMenu()">Extension</a></li>
+                                            <li><a routerLink="/admin/connectivity/vpw" routerLinkActive="active"
+                                                    (click)="toggleMobileMenu()">VPW</a></li>
+                                            <li><a routerLink="/admin/connectivity/cas" routerLinkActive="active"
+                                                    (click)="toggleMobileMenu()">CAS</a></li>
+                                            <li><a routerLink="/admin/connectivity/intercoms" routerLinkActive="active"
+                                                    (click)="toggleMobileMenu()">Intercom</a></li>
+                                            <li><a routerLink="/admin/connectivity/sip-3rd-party"
+                                                    routerLinkActive="active" (click)="toggleMobileMenu()">SIP/3rd
+                                                    Party</a></li>
+                                        </ul>
+                                    </div>
+                                </li>
+                                <li><a routerLink="/admin/connectivity/private-wire" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Private Wire</a></li>
+                                <li><a routerLink="/admin/connectivity/trunk" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Trunk</a></li>
+
+                                <li><a routerLink="/admin/connectivity/call-routing" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Call Routing</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 4. SBC - icon: elements for network elements -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('sbc') }" (click)="toggleAccordion('sbc')">
+                            <div class="flex items-center">
+                                <icon-menu-shield class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">SBC</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('sbc') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('sbc')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/connectivity/sbc" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">SBC</a></li>
+                                <li><a routerLink="/admin/connectivity/sbc-connections" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Connection</a></li>
+                                <li><a routerLink="/admin/connectivity/sbc-routing" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Routing</a></li>
+                                <li><a routerLink="/admin/connectivity/sbc-status-monitor" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Status Monitor</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 5. Voice Gateway - icon: chat for voice/call -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('voice-gateway') }"
+                            (click)="toggleAccordion('voice-gateway')">
+                            <div class="flex items-center">
+                                <icon-menu-server class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Voice
+                                    Gateway</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('voice-gateway') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('voice-gateway')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/voice-gateway/analog-fxo" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Analog FXO</a></li>
+                                <li><a routerLink="/admin/voice-gateway/analog-fxs" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Analog FXS</a></li>
+                                <li><a routerLink="/admin/voice-gateway/e1" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">E1</a></li>
+                                <li><a routerLink="/admin/voice-gateway/e1-cas" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">E1 CAS</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 6. Recording - icon: notes for recording/logs -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('recording') }"
+                            (click)="toggleAccordion('recording')">
+                            <div class="flex items-center">
+                                <icon-menu-microphone class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Recording</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('recording') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('recording')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/recording/server" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Recording Server</a></li>
+                                <li><a routerLink="/admin/recording/channel" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Channel</a></li>
+                                <li><a routerLink="/admin/recording/monitor" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Monitor</a></li>
+                                <li><a routerLink="/admin/recording/search" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Search</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 7. Device - icon: widgets for devices -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('device') }"
+                            (click)="toggleAccordion('device')">
+                            <div class="flex items-center">
+                                <icon-menu-phone class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Device</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('device') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('device')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/device/turret-device" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Turret Device</a></li>
+                                <li><a routerLink="/admin/device/3rd-party-device" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">3rd Party Device</a></li>
+                                <li><a routerLink="/admin/device/web-device" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Web Device</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 8. Turret Management - icon: tables for management -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('turret-management') }"
+                            (click)="toggleAccordion('turret-management')">
+                            <div class="flex items-center">
+                                <icon-menu-user-group class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Turret
+                                    Management</span>
+                            </div>
+                            <div
+                                [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('turret-management') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('turret-management')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/turret-management/users" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Turret Users</a></li>
+                                <li><a routerLink="/admin/turret-management/template" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Turret Template</a></li>
+                                <li><a routerLink="/admin/turret-management/group" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Turret Group</a></li>
+                                <li><a routerLink="/admin/turret-management/policy" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Policy/Privilege</a></li>
+                                <li><a routerLink="/admin/turret-management/phone-directory" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Phone Directory</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 9. Network - icon: drag-and-drop for network topology -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('network') }"
+                            (click)="toggleAccordion('network')">
+                            <div class="flex items-center">
+                                <icon-menu-globe class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Network</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('network') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('network')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/network/static-route" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Static Route</a></li>
+                                <li><a routerLink="/admin/network/firewall" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Firewall</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 10. Backup - icon: calendar for scheduled backups -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('backup') }"
+                            (click)="toggleAccordion('backup')">
+                            <div class="flex items-center">
+                                <icon-menu-download class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Backup</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('backup') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('backup')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/backup/network-backup" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Network Backup</a></li>
+                                <li><a routerLink="/admin/backup/local-backup" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Local Backup</a></li>
+                                <li><a routerLink="/admin/backup/backup" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Backup</a></li>
+                                <li><a routerLink="/admin/backup/restore" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Restore</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 11. CMS Administration - icon: authentication for admin -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('cms-admin') }"
+                            (click)="toggleAccordion('cms-admin')">
+                            <div class="flex items-center">
+                                <icon-menu-authentication class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">CMS
+                                    Administration</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('cms-admin') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('cms-admin')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/cms-admin/user-management" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">CMS User Management</a></li>
+                                <li><a routerLink="/admin/cms-admin/group" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">CMS Group</a></li>
+                                <li><a routerLink="/admin/cms-admin/policy" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">CMS Policy/Privilege</a></li>
+                                <li><a routerLink="/admin/cms-admin/layout-customizer" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Layout Customizer</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                    <!-- 12. Alarm & Log - icon: charts for monitoring -->
+                    <li class="accordion menu nav-item">
+                        <button type="button" class="nav-link group w-full"
+                            [ngClass]="{ active: activeDropdown.includes('alarm-log') }"
+                            (click)="toggleAccordion('alarm-log')">
+                            <div class="flex items-center">
+                                <icon-menu-document class="shrink-0 group-hover:!text-primary" />
+                                <span
+                                    class="text-black dark:text-[#506690] dark:group-hover:text-white-dark ltr:pl-3 rtl:pr-3">Alarm
+                                    & Log</span>
+                            </div>
+                            <div [ngClass]="{ 'rtl:rotate-90 -rotate-90': !activeDropdown.includes('alarm-log') }">
+                                <icon-caret-down />
+                            </div>
+                        </button>
+                        <div [@slideDownUp]="!activeDropdown.includes('alarm-log')" class="accordion-content">
+                            <ul class="sub-menu text-gray-500">
+                                <li><a routerLink="/admin/logs/system-logs" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">System Log</a></li>
+                                <li><a routerLink="/admin/logs/activity-logs" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Activity Log</a></li>
+                                <li><a routerLink="/admin/logs/call-logs" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Call Log</a></li>
+                                <li><a routerLink="/admin/logs/alarm-notification" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Alarm & Notification</a></li>
+                                <li><a routerLink="/admin/logs/usage-report" routerLinkActive="active"
+                                        (click)="toggleMobileMenu()">Usage Report</a></li>
+                            </ul>
+                        </div>
+                    </li>
+
+                </ul>
+            </ng-scrollbar>
+        </div>
+    </nav>
+</div>

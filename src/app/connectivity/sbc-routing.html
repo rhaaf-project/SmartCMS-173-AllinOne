@@ -1,0 +1,220 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">SBC Routing</h5>
+
+
+            <div class="flex ltr:ml-auto rtl:mr-auto">
+                <div class="relative mr-4">
+                    <input type="text" class="form-input-sm form-input w-auto pr-8" placeholder="Search..."
+                        [(ngModel)]="search" />
+                    <div class="absolute top-1/2 right-2 -translate-y-1/2"><svg width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" class="text-white-dark">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                            </circle>
+                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                        </svg></div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" (click)="openCreateModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" class="ltr:mr-1 rtl:ml-1">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New Route
+                </button>
+            </div>
+        </div>
+        <div class="mb-5">
+            <div class="table-responsive">
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Pattern (S)</th>
+                            <th>Destination</th>
+                            <th>Pattern (D)</th>
+                            <th>Priority</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading">
+                            <td colspan="6" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && filteredRoutes.length === 0">
+                            <td colspan="6" class="text-center">No routes found</td>
+                        </tr>
+                        <tr *ngFor="let route of filteredRoutes" class="group">
+                            <td>
+                                <div class="font-semibold text-primary">{{ route.src_description }}</div>
+                                <div class="text-xs text-white-dark">{{ getSbcName(route.src_call_server_id) }} / {{
+                                    getTrunkName(route.src_from_sbc_id) }}</div>
+                            </td>
+                            <td>{{ route.src_pattern }}</td>
+                            <td>
+                                <div class="font-semibold text-success">{{ route.dest_description }}</div>
+                                <div class="text-xs text-white-dark">{{ getSbcName(route.dest_call_server_id) }} / {{
+                                    getTrunkName(route.dest_from_sbc_id) }}</div>
+                            </td>
+                            <td>{{ route.dest_pattern }}</td>
+                            <td>{{ route.src_priority }}</td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary border-0 p-1"
+                                        (click)="copyRecord(route)" title="Copy">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning border-0 p-1"
+                                        (click)="openEditModal(route)" title="Edit">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                        (click)="deleteRoute(route.id!)" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="text-sm text-gray-500">Showing 1 to {{ filteredRoutes.length }} of {{ routes.length }} results</div>
+    </div>
+
+    <!-- Modal - 2 Column Layout matching Filament -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8">
+            <div class="panel my-8 w-full max-w-6xl overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()" [@toggleAnimation]>
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Create SBC Routing' : 'Edit SBC Routing'
+                        }}</h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()"><svg width="20"
+                            height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg></button>
+                </div>
+                <div class="p-5">
+                    <form (ngSubmit)="handleSubmit()">
+                        <!-- TOP Section: Master Config -->
+                        <div class="panel mb-6 bg-[#f4f4f4] dark:bg-[#1b2e4b] border-0">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-white-dark">SBC Server (Node)</label>
+                                    <select [(ngModel)]="formData.src_call_server_id" name="src_call_server_id"
+                                        class="form-select text-white-dark"
+                                        (change)="formData.dest_call_server_id = formData.src_call_server_id">
+                                        <option [ngValue]="null">Select an option</option>
+                                        <option *ngFor="let sbc of sbcs" [ngValue]="sbc.id">{{ sbc.name }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-white-dark">Name</label>
+                                    <input type="text" [(ngModel)]="masterName" name="masterName" class="form-input"
+                                        (ngModelChange)="onNameSync($event)" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BODY Section: Source vs Destination -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <!-- SOURCE Column -->
+                            <div>
+                                <h3 class="text-lg font-bold text-white mb-4">Source</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">Name</label>
+                                        <input type="text" [(ngModel)]="formData.src_description" name="src_description"
+                                            class="form-input bg-dark/20 cursor-not-allowed" readonly />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">DID</label>
+                                        <input type="text" [(ngModel)]="formData.src_pattern" name="src_pattern"
+                                            class="form-input" />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">CID</label>
+                                        <input type="text" [(ngModel)]="formData.src_cid_filter" name="src_cid_filter"
+                                            class="form-input" />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">Connection</label>
+                                        <select [(ngModel)]="formData.src_from_sbc_id" name="src_from_sbc_id"
+                                            class="form-select">
+                                            <option [ngValue]="null">Select an option</option>
+                                            <option *ngFor="let trunk of trunks" [ngValue]="trunk.id">{{ trunk.name }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DESTINATION Column -->
+                            <div>
+                                <h3 class="text-lg font-bold text-white mb-4">Destination</h3>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">Name</label>
+                                        <input type="text" [(ngModel)]="formData.dest_description"
+                                            name="dest_description" class="form-input bg-dark/20 cursor-not-allowed"
+                                            readonly />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">DID</label>
+                                        <input type="text" [(ngModel)]="formData.dest_pattern" name="dest_pattern"
+                                            class="form-input" />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">CID</label>
+                                        <input type="text" [(ngModel)]="formData.dest_cid_filter" name="dest_cid_filter"
+                                            class="form-input" />
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-white-dark uppercase">Connection</label>
+                                        <select [(ngModel)]="formData.dest_from_sbc_id" name="dest_from_sbc_id"
+                                            class="form-select">
+                                            <option [ngValue]="null">Select an option</option>
+                                            <option *ngFor="let trunk of trunks" [ngValue]="trunk.id">{{ trunk.name }}
+                                            </option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="mt-8 flex items-center gap-3">
+                            <button type="submit" class="btn btn-warning">{{ modalMode === 'create' ? 'Create' : 'Save
+                                changes' }}</button>
+                            <button *ngIf="modalMode === 'create'" type="button" class="btn btn-outline-warning">Create
+                                & create another</button>
+                            <button type="button" class="btn btn-dark" (click)="closeModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

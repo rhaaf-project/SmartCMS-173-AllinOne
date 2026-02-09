@@ -1,0 +1,137 @@
+<div>
+    <div class="pt-5">
+        <form (ngSubmit)="submit()" #branchForm="ngForm">
+            <!-- Branch Details Section -->
+            <div class="panel mb-5" style="padding: 15px;">
+                <h5 class="mb-2 text-medium font-medium dark:text-white-light">Branch Details</h5>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                        <label for="companyId">Company <span class="text-danger">*</span></label>
+                        <select id="companyId" name="companyId" [(ngModel)]="branch.companyId"
+                            (ngModelChange)="onCompanyChange()" class="form-select form-input-sm" required>
+                            <option [ngValue]="null" disabled>Select Company</option>
+                            <option *ngFor="let company of companies" [ngValue]="company.id">{{ company.name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="headOfficeId">Head Office</label>
+                        <select id="headOfficeId" name="headOfficeId" [(ngModel)]="branch.headOfficeId"
+                            class="form-select form-input-sm">
+                            <option [ngValue]="null">-</option>
+                            <option *ngFor="let ho of filteredHeadOffices" [ngValue]="ho.id">{{ ho.name }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="callServerId">Call Server</label>
+                        <select id="callServerId" name="callServerId" [(ngModel)]="branch.callServerId"
+                            class="form-select form-input-sm">
+                            <option [ngValue]="null">-</option>
+                            <option *ngFor="let cs of callServers" [ngValue]="cs.id">{{ cs.name }}</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mt-4">
+                    <div>
+                        <label for="name">Name <span class="text-danger">*</span></label>
+                        <input id="name" type="text" name="name" [(ngModel)]="branch.name"
+                            class="form-input-sm form-input" required />
+                    </div>
+                    <div>
+                        <label for="code">Code</label>
+                        <input id="code" type="text" name="code" [(ngModel)]="branch.code"
+                            class="form-input-sm form-input" />
+                    </div>
+                    <div>
+                        <label for="active">Active</label>
+                        <div class="mt-2">
+                            <label class="relative h-6 w-12">
+                                <input type="checkbox" name="active" [(ngModel)]="branch.active"
+                                    class="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0"
+                                    id="active" />
+                                <span
+                                    class="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Location Section -->
+            <div class="panel mb-5" style="padding: 15px;">
+                <h5 class="mb-2 text-medium font-medium dark:text-white-light">Location</h5>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                    <div>
+                        <label for="country">Country</label>
+                        <input id="country" type="text" name="country" [(ngModel)]="branch.country"
+                            class="form-input-sm form-input" />
+                    </div>
+                    <div>
+                        <label for="province">Province</label>
+                        <input id="province" type="text" name="province" [(ngModel)]="branch.province"
+                            class="form-input-sm form-input" />
+                    </div>
+                    <div>
+                        <label for="city">City</label>
+                        <input id="city" type="text" name="city" [(ngModel)]="branch.city"
+                            class="form-input-sm form-input" />
+                    </div>
+                    <div>
+                        <label for="district">District</label>
+                        <input id="district" type="text" name="district" [(ngModel)]="branch.district"
+                            class="form-input-sm form-input" />
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="address">Address</label>
+                    <textarea id="address" name="address" [(ngModel)]="branch.address"
+                        class="form-textarea form-input-sm min-h-[60px]" rows="2"></textarea>
+                </div>
+            </div>
+
+            <!-- Contact Section (Collapsed) -->
+            <div class="panel mb-5" style="padding: 15px;">
+                <div class="flex cursor-pointer items-center justify-between" (click)="toggleContact()">
+                    <h5 class="text-medium font-medium dark:text-white-light">Contact</h5>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        class="transition-transform duration-300" [ngClass]="{ 'rotate-180': contactExpanded }">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </div>
+                <div *ngIf="contactExpanded" class="mt-4">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label for="contactName">Contact Name</label>
+                            <input id="contactName" type="text" name="contactName" [(ngModel)]="branch.contactName"
+                                class="form-input-sm form-input" />
+                        </div>
+                        <div>
+                            <label for="contactPhone">Contact Phone</label>
+                            <input id="contactPhone" type="tel" name="contactPhone" [(ngModel)]="branch.contactPhone"
+                                class="form-input-sm form-input" />
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" [(ngModel)]="branch.description"
+                            class="form-textarea form-input-sm min-h-[60px]" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="flex gap-3">
+                <button type="submit" class="btn btn-warning btn-sm" [disabled]="!branchForm.valid">
+                    {{ isEdit ? 'Update' : 'Create' }}
+                </button>
+                <button *ngIf="!isEdit" type="button" (click)="submitAndCreateAnother()"
+                    class="btn btn-outline-warning btn-sm" [disabled]="!branchForm.valid">
+                    Create & create another
+                </button>
+                <button type="button" (click)="cancel()" class="btn btn-dark btn-sm">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

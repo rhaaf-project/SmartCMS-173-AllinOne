@@ -1,0 +1,228 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Sub Branch</h5>
+            <div class="flex ltr:ml-auto rtl:mr-auto">
+                <div class="relative mr-4">
+                    <input type="text" class="form-input-sm form-input w-auto pr-8" [(ngModel)]="search"
+                        (input)="onSearch()" placeholder="Search..." />
+                    <div class="absolute top-1/2 right-2 -translate-y-1/2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            class="text-white-dark">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5"
+                                opacity="0.5" />
+                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5"
+                                stroke-linecap="round" />
+                        </svg>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" (click)="openModal('create')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        class="ltr:mr-1 rtl:ml-1">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Create New
+                </button>
+            </div>
+        </div>
+
+        <div class="datatable">
+            <ng-datatable [rows]="filteredRows" [columns]="cols" [sortable]="true" [loading]="loading"
+                skin="whitespace-nowrap bh-table-hover">
+                <ng-template slot="active" let-value="data">
+                    <div style="text-align: -webkit-center;">
+                        <icon-circle-check *ngIf="value.active" class="text-success" />
+                    </div>
+                </ng-template>
+                <ng-template slot="actions" let-value="data">
+                    <div class="flex items-center justify-center gap-1">
+                        <button type="button" (click)="copyRecord(value)"
+                            class="btn btn-sm btn-outline-primary border-0 p-1" title="Copy">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                        <button type="button" (click)="openModal('edit', value)"
+                            class="btn btn-sm btn-outline-warning border-0 p-1" title="Edit">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button type="button" (click)="deleteSubBranch(value)"
+                            class="btn btn-sm btn-outline-danger border-0 p-1" title="Delete">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </ng-template>
+            </ng-datatable>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8">
+            <div class="panel my-8 w-full max-w-4xl overflow-hidden rounded-lg border-0 !p-0"
+                (click)="$event.stopPropagation()">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md sticky top-0 z-10">
+                    <h5 class="text-lg font-semibold text-white">
+                        {{ modalMode === 'create' ? 'Create Sub Branch' : 'Edit Sub Branch' }}
+                    </h5>
+                    <button type="button" (click)="closeModal()" class="text-gray-400 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1.5">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Modal Body -->
+                <div class="p-5">
+                    <form (ngSubmit)="saveRecord()" #subBranchForm="ngForm">
+                        <!-- Sub Branch Details Section -->
+                        <div class="mb-5 p-4 rounded-lg border border-gray-700">
+                            <h6 class="mb-3 text-sm font-semibold text-primary">Sub Branch Details</h6>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                                <div>
+                                    <label for="companyId">Company <span class="text-danger">*</span></label>
+                                    <select id="companyId" name="companyId" [(ngModel)]="formData.companyId"
+                                        (ngModelChange)="onCompanyChange()" class="form-select form-input-sm" required>
+                                        <option [ngValue]="null" disabled>Select Company</option>
+                                        <option *ngFor="let company of companies" [ngValue]="company.id">{{ company.name
+                                            }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="parentBranchId">Parent Branch</label>
+                                    <select id="parentBranchId" name="parentBranchId"
+                                        [(ngModel)]="formData.parentBranchId" class="form-select form-input-sm">
+                                        <option [ngValue]="null">-</option>
+                                        <option *ngFor="let br of filteredBranches" [ngValue]="br.id">{{ br.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="callServerId">Call Server</label>
+                                    <select id="callServerId" name="callServerId" [(ngModel)]="formData.callServerId"
+                                        class="form-select form-input-sm">
+                                        <option [ngValue]="null">-</option>
+                                        <option *ngFor="let cs of availableCallServers" [ngValue]="cs.id">{{ cs.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3 mt-4">
+                                <div>
+                                    <label for="name">Name <span class="text-danger">*</span></label>
+                                    <input id="name" type="text" name="name" [(ngModel)]="formData.name"
+                                        class="form-input-sm form-input" required />
+                                </div>
+                                <div>
+                                    <label for="code">Code</label>
+                                    <input id="code" type="text" name="code" [(ngModel)]="formData.code"
+                                        class="form-input-sm form-input" />
+                                </div>
+                                <div>
+                                    <label for="active">Active</label>
+                                    <div class="mt-2">
+                                        <label class="relative h-6 w-12">
+                                            <input type="checkbox" name="active" [(ngModel)]="formData.active"
+                                                class="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0"
+                                                id="active" />
+                                            <span
+                                                class="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Location Section -->
+                        <div class="mb-5 p-4 rounded-lg border border-gray-700">
+                            <h6 class="mb-3 text-sm font-semibold text-primary">Location</h6>
+                            <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                                <div>
+                                    <label for="country">Country</label>
+                                    <input id="country" type="text" name="country" [(ngModel)]="formData.country"
+                                        class="form-input-sm form-input" />
+                                </div>
+                                <div>
+                                    <label for="province">Province</label>
+                                    <input id="province" type="text" name="province" [(ngModel)]="formData.province"
+                                        class="form-input-sm form-input" />
+                                </div>
+                                <div>
+                                    <label for="city">City</label>
+                                    <input id="city" type="text" name="city" [(ngModel)]="formData.city"
+                                        class="form-input-sm form-input" />
+                                </div>
+                                <div>
+                                    <label for="district">District</label>
+                                    <input id="district" type="text" name="district" [(ngModel)]="formData.district"
+                                        class="form-input-sm form-input" />
+                                </div>
+                            </div>
+                            <div class="mt-4">
+                                <label for="address">Address</label>
+                                <textarea id="address" name="address" [(ngModel)]="formData.address"
+                                    class="form-textarea form-input-sm min-h-[60px]" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Contact Section (Collapsed) -->
+                        <div class="mb-5 p-4 rounded-lg border border-gray-700">
+                            <div class="flex cursor-pointer items-center justify-between" (click)="toggleContact()">
+                                <h6 class="text-sm font-semibold text-primary">Contact</h6>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                    stroke-linejoin="round" class="transition-transform duration-300"
+                                    [ngClass]="{ 'rotate-180': contactExpanded }">
+                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                            </div>
+                            <div *ngIf="contactExpanded" class="mt-4">
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label for="contactName">Contact Name</label>
+                                        <input id="contactName" type="text" name="contactName"
+                                            [(ngModel)]="formData.contactName" class="form-input-sm form-input" />
+                                    </div>
+                                    <div>
+                                        <label for="contactPhone">Contact Phone</label>
+                                        <input id="contactPhone" type="tel" name="contactPhone"
+                                            [(ngModel)]="formData.contactPhone" class="form-input-sm form-input" />
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <label for="description">Description</label>
+                                    <textarea id="description" name="description" [(ngModel)]="formData.description"
+                                        class="form-textarea form-input-sm min-h-[60px]" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex justify-end gap-3 pt-3 border-t border-gray-700">
+                            <button type="button" class="btn btn-outline-danger" (click)="closeModal()">Cancel</button>
+                            <button type="submit" class="btn btn-warning" [disabled]="!subBranchForm.valid">
+                                {{ modalMode === 'create' ? 'Create' : 'Update' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>

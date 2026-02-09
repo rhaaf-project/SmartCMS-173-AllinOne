@@ -1,0 +1,648 @@
+<div>
+    <ul class="flex space-x-2 rtl:space-x-reverse">
+        <li>
+            <a href="javascript:;" class="text-primary hover:underline">Dashboard</a>
+        </li>
+        <li class="before:content-['/'] ltr:before:mr-2 rtl:before:ml-2">
+            <span>Admin</span>
+        </li>
+    </ul>
+
+    <div class="pt-5">
+        <!-- Row 1: Organization -->
+        <div class="mb-6">
+            <h5 class="mb-4 text-xl font-semibold dark:text-white-light">Organization</h5>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <!-- HO -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-primary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">HO</h6>
+                            <p class="text-xs text-white-dark">Head Office</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.ho?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.ho?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Branch -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-success/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-success" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Branch</h6>
+                            <p class="text-xs text-white-dark">Branches</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.branch?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.branch?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Sub Branch -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-warning/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Sub Branch</h6>
+                            <p class="text-xs text-white-dark">Sub Branches</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.subBranch?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.subBranch?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Call Server -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-info/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-info" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Call Server</h6>
+                            <p class="text-xs text-white-dark">Servers</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.callServer?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.callServer?.inactive || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Line -->
+        <div class="mb-6">
+            <h5 class="mb-4 text-xl font-semibold dark:text-white-light">Line</h5>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
+                <!-- Line -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-secondary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Line</h6>
+                            <p class="text-xs text-white-dark">Lines</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.line?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.line?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Extension -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-success/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-success" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Extension</h6>
+                            <p class="text-xs text-white-dark">Extensions</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.extension?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.extension?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Private Wire -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-primary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Private Wire</h6>
+                            <p class="text-xs text-white-dark">VPW</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.privateWire?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.privateWire?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- CAS -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-warning/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 17a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 17a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">CAS</h6>
+                            <p class="text-xs text-white-dark">Channel Associated</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.cas?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.cas?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Intercom -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-info/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-info" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Intercom</h6>
+                            <p class="text-xs text-white-dark">Intercoms</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.intercom?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.intercom?.inactive || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Trunk/Routing -->
+        <div class="mb-6">
+            <h5 class="mb-4 text-xl font-semibold dark:text-white-light">Trunk / Call Routing</h5>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <!-- Trunk -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-danger/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-danger" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Trunk</h6>
+                            <p class="text-xs text-white-dark">Trunks</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.trunk?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.trunk?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Inbound -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-primary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Inbound</h6>
+                            <p class="text-xs text-white-dark">Inbound Routes</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.inbound?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.inbound?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Outbound -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-warning/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Outbound</h6>
+                            <p class="text-xs text-white-dark">Outbound Routes</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.outbound?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.outbound?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Conference -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-success/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-success" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Conference</h6>
+                            <p class="text-xs text-white-dark">Conferences</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.conference?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.conference?.inactive || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: SBC -->
+        <div class="mb-6">
+            <h5 class="mb-4 text-xl font-semibold dark:text-white-light">SBC</h5>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <!-- SBC -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-danger/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-danger" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">SBC</h6>
+                            <p class="text-xs text-white-dark">Session Border Controller</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.sbc?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.sbc?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Connection -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-info/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-info" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Connection</h6>
+                            <p class="text-xs text-white-dark">SBC Connections</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.sbcConnection?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.sbcConnection?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Routing -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-secondary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Routing</h6>
+                            <p class="text-xs text-white-dark">SBC Routing</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.sbcRouting?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.sbcRouting?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- SIP/3rd Party -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-primary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">SIP/3rd Party</h6>
+                            <p class="text-xs text-white-dark">Third Party SIP</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.sipThirdParty?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.sipThirdParty?.inactive || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 5: Device -->
+        <div class="mb-6">
+            <h5 class="mb-4 text-xl font-semibold dark:text-white-light">Device</h5>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <!-- Turret -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-warning/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Turret</h6>
+                            <p class="text-xs text-white-dark">Turret Devices</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.turret?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.turret?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Web Device -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-success/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-success" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Web Device</h6>
+                            <p class="text-xs text-white-dark">Web Devices</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.webDevice?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.webDevice?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- 3rd Party Device -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-info/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-info" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">3rd Party Device</h6>
+                            <p class="text-xs text-white-dark">Third Party</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.thirdPartyDevice?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.thirdPartyDevice?.inactive || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 6: Voice Gateway -->
+        <div class="mb-6">
+            <h5 class="mb-4 text-xl font-semibold dark:text-white-light">Voice Gateway</h5>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <!-- Analog FXO Gateway -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-secondary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-secondary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Analog FXO Gateway</h6>
+                            <p class="text-xs text-white-dark">FXO</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.analogFxoGateway?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.analogFxoGateway?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Analog FXS Gateway -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-primary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Analog FXS Gateway</h6>
+                            <p class="text-xs text-white-dark">FXS</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.analogFxsGateway?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.analogFxsGateway?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- E1 Gateway -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-warning/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">E1 Gateway</h6>
+                            <p class="text-xs text-white-dark">E1</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.e1Gateway?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.e1Gateway?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- E1 CAS Gateway -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-danger/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-danger" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">E1 CAS Gateway</h6>
+                            <p class="text-xs text-white-dark">E1 CAS</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.e1CasGateway?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.e1CasGateway?.inactive || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 7: Recording & Alarm -->
+        <div class="mb-6">
+            <h5 class="mb-4 text-xl font-semibold dark:text-white-light">Recording & Alarm</h5>
+            <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <!-- Recording Server -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-danger/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-danger" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Recording Svr</h6>
+                            <p class="text-xs text-white-dark">Recording Server</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.recordingServer?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.recordingServer?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Recording Channel -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-primary/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2M7 4h10M7 4v16a2 2 0 002 2h6a2 2 0 002-2V4" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Recording Channel</h6>
+                            <p class="text-xs text-white-dark">Channels</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.recordingChannel?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.recordingChannel?.inactive || 0 }}</span>
+                    </div>
+                </div>
+
+                <!-- Alarm & Notification -->
+                <div class="panel">
+                    <div class="mb-5 flex items-center font-semibold">
+                        <div class="grid h-10 w-10 shrink-0 place-content-center rounded-full bg-warning/10">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-warning" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                        </div>
+                        <div class="ltr:ml-2 rtl:mr-2">
+                            <h6 class="text-dark dark:text-white-light">Alarm & Notification</h6>
+                            <p class="text-xs text-white-dark">Alerts</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-base font-bold">
+                        <span class="text-success">{{ stats.alarmNotification?.active || 0 }}</span>
+                        <span class="text-sm font-normal text-white-dark">/</span>
+                        <span class="text-danger">{{ stats.alarmNotification?.inactive || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

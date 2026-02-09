@@ -1,0 +1,77 @@
+<div>
+    <div class="pt-5">
+        <form (ngSubmit)="submit()" #companyForm="ngForm">
+            <!-- Company Information Section -->
+            <div class="panel mb-5" style="padding: 15px;">
+                <h5 class="mb-2 text-medium font-medium dark:text-white-light">Company Information</h5>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                        <label for="companyName">Company Name <span class="text-danger">*</span></label>
+                        <input id="companyName" type="text" name="name" [(ngModel)]="company.name"
+                            class="form-input-sm form-input" required />
+                    </div>
+                    <div>
+                        <label for="companyCode">Company Code</label>
+                        <input id="companyCode" type="text" name="code" [(ngModel)]="company.code"
+                            class="form-input-sm form-input" />
+                    </div>
+                    <div>
+                        <label for="companyActive">Active</label>
+                        <div class="mt-2">
+                            <label class="relative h-6 w-12">
+                                <input type="checkbox" name="active" [(ngModel)]="company.active"
+                                    class="custom_switch peer absolute z-10 h-full w-full cursor-pointer opacity-0"
+                                    id="companyActive" />
+                                <span for="companyActive"
+                                    class="block h-full rounded-full bg-[#ebedf2] before:absolute before:bottom-1 before:left-1 before:h-4 before:w-4 before:rounded-full before:bg-white before:transition-all before:duration-300 peer-checked:bg-primary peer-checked:before:left-7 dark:bg-dark dark:before:bg-white-dark dark:peer-checked:before:bg-white"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information Section -->
+            <div class="panel mb-5" style="padding: 15px;">
+                <h5 class="mb-2 text-medium font-medium dark:text-white-light">Contact Information</h5>
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                        <label for="contactPerson">Contact Person</label>
+                        <input id="contactPerson" type="text" name="contactPerson" [(ngModel)]="company.contactPerson"
+                            class="form-input-sm form-input" />
+                    </div>
+                    <div>
+                        <label for="email">Email</label>
+                        <input id="email" type="email" name="email" [(ngModel)]="company.email"
+                            class="form-input-sm form-input" />
+                    </div>
+                    <div>
+                        <label for="phone">Phone</label>
+                        <input id="phone" type="tel" name="phone" [(ngModel)]="company.phone"
+                            class="form-input-sm form-input" />
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="address">Address</label>
+                    <textarea id="address" name="address" [(ngModel)]="company.address"
+                        class="form-textarea form-input-sm min-h-[80px]" rows="3"></textarea>
+                </div>
+            </div>
+
+
+
+            <!-- Form Actions -->
+            <div class="flex gap-3">
+                <button type="submit" class="btn btn-warning btn-sm" [disabled]="!companyForm.valid">
+                    {{ isEdit ? 'Update' : 'Create' }}
+                </button>
+                <button *ngIf="!isEdit" type="button" (click)="submitAndCreateAnother()"
+                    class="btn btn-outline-warning btn-sm" [disabled]="!companyForm.valid">
+                    Create & create another
+                </button>
+                <button type="button" (click)="cancel()" class="btn btn-dark btn-sm">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

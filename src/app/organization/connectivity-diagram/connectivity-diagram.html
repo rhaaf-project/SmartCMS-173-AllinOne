@@ -1,0 +1,89 @@
+<div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="panel">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-lg font-bold">Head Offices</div>
+                    <div class="text-success mt-2 font-semibold">{{ hoCount }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-lg font-bold">Branches</div>
+                    <div class="text-success mt-2 font-semibold">{{ branchCount }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-lg font-bold">Active Connections</div>
+                    <div class="text-success mt-2 font-semibold">{{ connectionCount }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-lg font-semibold dark:text-white-light">Connectivity Diagram</h5>
+            <div class="flex items-center gap-3 ltr:ml-auto rtl:mr-auto">
+                <select [(ngModel)]="selectedCompanyId" (change)="onCompanyChange()" class="form-select w-48 text-sm">
+                    <option value="">All Companies</option>
+                    <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
+                </select>
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="refresh()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        class="w-4 h-4 ltr:mr-1 rtl:ml-1">
+                        <path d="M13.9146 4.76001C12.4485 3.99617 10.7243 4.09502 9.33333 5.0223" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" />
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.5" />
+                        <path d="M16 12C16 14.2091 14.2091 16 12 16" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="mb-6 flex flex-wrap gap-4 justify-center border-b border-white-light dark:border-[#191e3a] pb-6">
+            <div class="flex items-center gap-2">
+                <img src="assets/images/topology/head-office.png" alt="Head Office" class="w-8 h-8">
+                <span class="text-sm font-semibold">Head Office</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <img src="assets/images/topology/branch.png" alt="Branch" class="w-8 h-8">
+                <span class="text-sm font-semibold">Branch</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <img src="assets/images/topology/branch-sbc.png" alt="Branch with SBC" class="w-8 h-8">
+                <span class="text-sm font-semibold">Branch with SBC</span>
+            </div>
+            <div class="flex items-center gap-2 ml-4">
+                <span class="block w-3 h-3 rounded-full bg-success"></span>
+                <span class="text-sm">Online</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="block w-3 h-3 rounded-full bg-danger"></span>
+                <span class="text-sm">Offline</span>
+            </div>
+        </div>
+
+        <!-- Working Area -->
+        <div *ngIf="isLoading" class="flex justify-center items-center h-[500px]">
+            <span
+                class="animate-spin border-4 border-primary border-l-transparent rounded-full w-10 h-10 inline-block align-middle m-auto"></span>
+        </div>
+
+        <div *ngIf="!isLoading" id="topology-network"
+            class="w-full h-[600px] border border-white-light dark:border-[#191e3a] rounded-lg bg-white">
+        </div>
+
+        <div class="mt-4 text-xs text-center text-gray-500">
+            Click on any node to view details | Use mouse wheel to zoom | Drag background to pan
+        </div>
+    </div>
+</div>

@@ -1,0 +1,131 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Alarm & Notification</h5>
+        </div>
+        <div class="mb-5">
+            <div class="table-responsive">
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Severity</th>
+                            <th>Title</th>
+                            <th>Message</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading">
+                            <td colspan="7" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && notifications.length === 0">
+                            <td colspan="7" class="text-center">No notifications found</td>
+                        </tr>
+                        <tr *ngFor="let notification of notifications">
+                            <td>
+                                <span class="badge"
+                                    [ngClass]="notification.type === 'alarm' ? 'badge-outline-danger' : 'badge-outline-info'">
+                                    {{ notification.type | titlecase }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge" [ngClass]="getSeverityClass(notification.severity)">
+                                    {{ notification.severity | titlecase }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="font-semibold">{{ notification.title }}</div>
+                            </td>
+                            <td>
+                                <div class="line-clamp-2 max-w-xs">{{ notification.message }}</div>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                    [ngClass]="notification.is_read ? 'badge-outline-success' : 'badge-outline-warning'">
+                                    {{ notification.is_read ? 'Read' : 'Unread' }}
+                                </span>
+                            </td>
+                            <td>{{ notification.created_at | date:'short' }}</td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary border-0 p-1"
+                                        (click)="viewNotification(notification)" title="View">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                        (click)="deleteNotification(notification.id!)" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="text-sm text-gray-500">Showing 1 to {{ notifications.length }} of {{ notifications.length }} results
+        </div>
+    </div>
+
+    <!-- View Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8">
+            <div class="panel my-8 w-full max-w-2xl overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()">
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-bold">Notification Details</h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()">
+                        <icon-x />
+                    </button>
+                </div>
+                <div class="p-5" *ngIf="selectedNotification">
+                    <div class="mb-4">
+                        <label class="font-semibold">Type:</label>
+                        <span class="ml-2 badge"
+                            [ngClass]="selectedNotification.type === 'alarm' ? 'badge-outline-danger' : 'badge-outline-info'">
+                            {{ selectedNotification.type | titlecase }}
+                        </span>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">Severity:</label>
+                        <span class="ml-2 badge" [ngClass]="getSeverityClass(selectedNotification.severity)">
+                            {{ selectedNotification.severity | titlecase }}
+                        </span>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">Title:</label>
+                        <p>{{ selectedNotification.title }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">Message:</label>
+                        <p class="whitespace-pre-wrap">{{ selectedNotification.message }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">Created At:</label>
+                        <p>{{ selectedNotification.created_at | date:'medium' }}</p>
+                    </div>
+                    <div class="mt-8 flex justify-end">
+                        <button type="button" class="btn btn-outline-danger" (click)="closeModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,123 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Black List</h5>
+            <div class="flex ltr:ml-auto rtl:mr-auto">
+                <div class="relative mr-4">
+                    <input type="text" class="form-input-sm form-input w-auto pr-8" [(ngModel)]="search"
+                        placeholder="Search..." />
+                    <div class="absolute top-1/2 right-2 -translate-y-1/2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            class="text-white-dark">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                            </circle>
+                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" (click)="openModal('create')">
+                    <icon-plus class="ltr:mr-1 rtl:ml-1" />
+                    Create New
+                </button>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <div class="table-responsive">
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th>Number/CallerID</th>
+                            <th>Description</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading">
+                            <td colspan="3" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent align-middle">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && blackLists.length === 0">
+                            <td colspan="3" class="text-center">No black list found</td>
+                        </tr>
+                        <tr *ngFor="let item of blackLists">
+                            <td>
+                                <div class="font-semibold">{{ item.number }}</div>
+                            </td>
+                            <td>{{ item.description || '-' }}</td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-warning border-0 p-1"
+                                        (click)="openModal('edit', item)" title="Edit">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                        (click)="deleteBlackList(item.id)" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-center justify-center px-4">
+            <div class="panel my-8 w-full max-w-lg overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()" [@toggleAnimation]>
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Add Black List' : 'Edit Black List' }}
+                    </h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-0">
+                    <ng-scrollbar class="max-h-[80vh]" visibility="hover">
+                        <div class="p-5">
+                            <form (ngSubmit)="saveBlackList()">
+                                <div class="mb-5">
+                                    <label>Number/CallerID <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-input" [(ngModel)]="form.number" name="number"
+                                        required />
+                                </div>
+                                <div class="mb-5">
+                                    <label>Description</label>
+                                    <input type="text" class="form-input" [(ngModel)]="form.description"
+                                        name="description" />
+                                </div>
+                                <div class="flex justify-end gap-3 mt-8">
+                                    <button type="button" class="btn btn-outline-danger"
+                                        (click)="closeModal()">Close</button>
+                                    <button type="submit" class="btn btn-warning">Save changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </ng-scrollbar>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

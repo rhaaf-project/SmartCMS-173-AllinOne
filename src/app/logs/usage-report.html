@@ -1,0 +1,188 @@
+<div>
+    <ul class="flex space-x-2 rtl:space-x-reverse">
+        <li>
+            <a href="javascript:;" class="text-primary hover:underline">Alarm & Log</a>
+        </li>
+        <li class="before:content-['/'] ltr:before:mr-2 rtl:before:ml-2">
+            <span>Usage Report</span>
+        </li>
+    </ul>
+
+    <div class="pt-5">
+        <div class="panel">
+            <!-- Header with Filters -->
+            <div class="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+                    <!-- Date Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-semibold whitespace-nowrap">Date:</label>
+                        <input type="date" [(ngModel)]="selectedDate" (change)="onFilterChange()"
+                            class="form-input w-auto" />
+                    </div>
+
+                    <!-- Category/Branch Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-semibold whitespace-nowrap">Category:</label>
+                        <select [(ngModel)]="selectedBranchId" (change)="onFilterChange()"
+                            class="form-select w-auto min-w-[180px]">
+                            <option [ngValue]="null">All Locations</option>
+                            <option *ngFor="let branch of branches" [ngValue]="branch.id">{{ branch.name }}</option>
+                        </select>
+                    </div>
+
+                    <!-- Call Server Filter -->
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-semibold whitespace-nowrap">IP Address:</label>
+                        <select [(ngModel)]="selectedCallServerId" (change)="onCallServerChange()"
+                            class="form-select w-auto min-w-[200px]">
+                            <option [ngValue]="null">All Servers</option>
+                            <option *ngFor="let cs of callServers" [ngValue]="cs.id">{{ cs.host }} ({{ cs.name }})
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button type="button" (click)="loadData()" class="btn btn-outline-primary btn-sm">
+                        <icon-refresh class="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                        Refresh
+                    </button>
+                    <button type="button" (click)="downloadReport()" class="btn btn-primary btn-sm"
+                        [disabled]="data.length === 0">
+                        <icon-download class="h-4 w-4 ltr:mr-1 rtl:ml-1" />
+                        Download Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- Info Bar -->
+            <div class="mb-4 rounded bg-gray-100 dark:bg-gray-800 p-3 text-sm flex flex-wrap items-center gap-4">
+                <span><strong>Date:</strong> {{ selectedDate }}</span>
+                <span><strong>Category:</strong> {{ getCategoryName() }}</span>
+                <span *ngIf="selectedIpAddress"><strong>IP Address:</strong> {{ selectedIpAddress }}</span>
+                <span class="ml-auto"><strong>Total Records:</strong> {{ data.length }}</span>
+            </div>
+
+            <!-- Loading -->
+            <div *ngIf="isLoading" class="flex items-center justify-center py-10">
+                <div class="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+                <span class="ml-2">Loading...</span>
+            </div>
+
+            <!-- Data Table -->
+            <div *ngIf="!isLoading" class="table-responsive">
+                <table class="table-striped">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="!text-center border border-gray-300 dark:border-gray-600">No</th>
+                            <th rowspan="2" class="!text-center border border-gray-300 dark:border-gray-600">Number</th>
+                            <th colspan="2"
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-blue-50 dark:bg-blue-900/30">
+                                Line</th>
+                            <th colspan="2"
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-green-50 dark:bg-green-900/30">
+                                Extension</th>
+                            <th colspan="2"
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-purple-50 dark:bg-purple-900/30">
+                                VPW</th>
+                            <th colspan="2"
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-yellow-50 dark:bg-yellow-900/30">
+                                CAS</th>
+                            <th colspan="2"
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-red-50 dark:bg-red-900/30">
+                                SIP/3rd Party</th>
+                            <th colspan="2"
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700">
+                                Total time</th>
+                        </tr>
+                        <tr>
+                            <!-- Line -->
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-blue-50 dark:bg-blue-900/30 text-xs">
+                                Inbound</th>
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-blue-50 dark:bg-blue-900/30 text-xs">
+                                Outbound</th>
+                            <!-- Extension -->
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-green-50 dark:bg-green-900/30 text-xs">
+                                Inbound</th>
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-green-50 dark:bg-green-900/30 text-xs">
+                                Outbound</th>
+                            <!-- VPW -->
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-purple-50 dark:bg-purple-900/30 text-xs">
+                                Inbound</th>
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-purple-50 dark:bg-purple-900/30 text-xs">
+                                Outbound</th>
+                            <!-- CAS -->
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-yellow-50 dark:bg-yellow-900/30 text-xs">
+                                Inbound</th>
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-yellow-50 dark:bg-yellow-900/30 text-xs">
+                                Outbound</th>
+                            <!-- SIP -->
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-red-50 dark:bg-red-900/30 text-xs">
+                                Inbound</th>
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-red-50 dark:bg-red-900/30 text-xs">
+                                Outbound</th>
+                            <!-- Total -->
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-xs">
+                                Inbound</th>
+                            <th
+                                class="!text-center border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-xs">
+                                Outbound</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let item of data; let i = index">
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{ i + 1 }}</td>
+                            <td class="!text-center border border-gray-200 dark:border-gray-700 font-semibold">{{
+                                item.extension_number }}</td>
+                            <!-- Line -->
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.line_inbound) }}</td>
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.line_outbound) }}</td>
+                            <!-- Extension -->
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.ext_inbound) }}</td>
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.ext_outbound) }}</td>
+                            <!-- VPW -->
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.vpw_inbound) }}</td>
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.vpw_outbound) }}</td>
+                            <!-- CAS -->
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.cas_inbound) }}</td>
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.cas_outbound) }}</td>
+                            <!-- SIP -->
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.sip_inbound) }}</td>
+                            <td class="!text-center border border-gray-200 dark:border-gray-700">{{
+                                showValue(item.sip_outbound) }}</td>
+                            <!-- Total Time -->
+                            <td class="!text-center border border-gray-200 dark:border-gray-700 text-xs">{{
+                                item.total_time_inbound_formatted }}</td>
+                            <td class="!text-center border border-gray-200 dark:border-gray-700 text-xs">{{
+                                item.total_time_outbound_formatted }}</td>
+                        </tr>
+                        <tr *ngIf="data.length === 0">
+                            <td colspan="14" class="!text-center py-8 text-gray-500">No data available for selected
+                                filters</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,187 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Trunk</h5>
+            <div class="flex ltr:ml-auto rtl:mr-auto">
+                <div class="relative mr-4">
+                    <input type="text" class="form-input-sm form-input w-auto pr-8" placeholder="Search..."
+                        [(ngModel)]="search" />
+                    <div class="absolute top-1/2 right-2 -translate-y-1/2"><svg width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" class="text-white-dark">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                            </circle>
+                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                        </svg></div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" (click)="openCreateModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" class="ltr:mr-1 rtl:ml-1">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New Trunk
+                </button>
+            </div>
+        </div>
+        <div class="mb-5">
+            <div class="table-responsive">
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th>Call Server</th>
+                            <th>Name</th>
+                            <th>SIP Server</th>
+                            <th>Outbound CID</th>
+                            <th>Max Ch.</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading">
+                            <td colspan="7" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && trunks.length === 0">
+                            <td colspan="7" class="text-center">No trunks found</td>
+                        </tr>
+                        <tr *ngFor="let trunk of trunks">
+                            <td>{{ trunk.call_server?.name || '-' }}</td>
+                            <td>
+                                <div class="font-semibold">{{ trunk.name }}</div>
+                            </td>
+                            <td>{{ trunk.sip_server }}</td>
+                            <td>{{ trunk.outcid || '-' }}</td>
+                            <td>{{ trunk.maxchans }}</td>
+                            <td class="text-center" style="text-align: -webkit-center;">
+                                <icon-circle-check *ngIf="!trunk.disabled" class="text-success" />
+                                <icon-x-circle *ngIf="trunk.disabled" class="text-danger" />
+                            </td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary border-0 p-1"
+                                        (click)="copyRecord(trunk)" title="Copy">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning border-0 p-1"
+                                        (click)="openEditModal(trunk)" title="Edit">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                        (click)="deleteTrunk(trunk.id!)" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="text-sm text-gray-500">Showing 1 to {{ trunks.length }} of {{ trunks.length }} results</div>
+    </div>
+
+    <!-- Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8">
+            <div class="panel my-8 w-full max-w-3xl overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()" [@toggleAnimation]>
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Create Trunk' : 'Edit Trunk' }}</h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()"><svg width="20"
+                            height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg></button>
+                </div>
+                <div class="p-5">
+                    <form (ngSubmit)="handleSubmit()">
+                        <!-- Trunk Details -->
+                        <h6 class="text-base font-semibold mb-4">Trunk Details</h6>
+                        <div class="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+                            <div>
+                                <label for="call_server_id">Call Server <span class="text-danger">*</span></label>
+                                <select id="call_server_id" [(ngModel)]="formData.call_server_id" name="call_server_id"
+                                    class="form-select" required>
+                                    <option [ngValue]="null">Select Call Server</option>
+                                    <option *ngFor="let cs of callServers" [ngValue]="cs.id">{{ cs.name }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="name">Name <span class="text-danger">*</span></label>
+                                <input id="name" type="text" [(ngModel)]="formData.name" name="name" class="form-input"
+                                    required />
+                            </div>
+                            <div>
+                                <label for="outcid">Outbound CID</label>
+                                <input id="outcid" type="text" [(ngModel)]="formData.outcid" name="outcid"
+                                    class="form-input" />
+                            </div>
+                            <div>
+                                <label for="maxchans">Max Channels</label>
+                                <input id="maxchans" type="number" [(ngModel)]="formData.maxchans" name="maxchans"
+                                    class="form-input" min="1" max="100" />
+                            </div>
+                        </div>
+
+                        <!-- SIP Server Settings -->
+                        <h6 class="text-base font-semibold mb-4 mt-6">SIP Server Settings</h6>
+                        <div class="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+                            <div>
+                                <label for="sip_server">SIP Server <span class="text-danger">*</span></label>
+                                <input id="sip_server" type="text" [(ngModel)]="formData.sip_server" name="sip_server"
+                                    class="form-input" required />
+                            </div>
+                            <div>
+                                <label for="sip_server_port">SIP Port</label>
+                                <input id="sip_server_port" type="number" [(ngModel)]="formData.sip_server_port"
+                                    name="sip_server_port" class="form-input" />
+                            </div>
+                            <div>
+                                <label for="transport">Transport</label>
+                                <select id="transport" [(ngModel)]="formData.transport" name="transport"
+                                    class="form-select">
+                                    <option *ngFor="let t of transportOptions" [value]="t.value">{{ t.label }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="context">Context</label>
+                                <input id="context" type="text" [(ngModel)]="formData.context" name="context"
+                                    class="form-input" />
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <label class="inline-flex cursor-pointer"><input type="checkbox"
+                                    [(ngModel)]="formData.disabled" name="disabled" class="form-checkbox" /><span
+                                    class="ml-2">Disabled</span></label>
+                        </div>
+
+                        <div class="mt-8 flex items-center justify-start gap-3">
+                            <button type="submit" class="btn btn-warning">Save changes</button>
+                            <button type="button" class="btn btn-dark" (click)="closeModal()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

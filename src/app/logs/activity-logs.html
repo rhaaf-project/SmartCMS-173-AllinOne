@@ -1,0 +1,140 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Activity Log</h5>
+        </div>
+        <div class="mb-5">
+            <div class="table-responsive">
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>User</th>
+                            <th>Time In</th>
+                            <th>Time Out</th>
+                            <th>Action</th>
+                            <th>IP Address</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading">
+                            <td colspan="7" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && logs.length === 0">
+                            <td colspan="7" class="text-center">No activity logs found</td>
+                        </tr>
+                        <tr *ngFor="let log of logs">
+                            <td>{{ log.created_at | date:'yyyy-MM-dd' }}</td>
+                            <td>
+                                <div class="font-semibold">{{ getDisplayName(log) }}</div>
+                            </td>
+                            <td>
+                                <span *ngIf="log.action === 'login'">{{ log.created_at | date:'HH:mm:ss' }}</span>
+                                <span *ngIf="log.action !== 'login'" class="text-gray-400">-</span>
+                            </td>
+                            <td>
+                                <span *ngIf="log.action === 'logout'">{{ log.created_at | date:'HH:mm:ss' }}</span>
+                                <span *ngIf="log.action === 'login' && getLogoutTime(log)">{{ getLogoutTime(log) |
+                                    date:'HH:mm:ss' }}</span>
+                                <span *ngIf="log.action === 'login' && !getLogoutTime(log)"
+                                    class="text-gray-400">-</span>
+                                <span *ngIf="log.action !== 'login' && log.action !== 'logout'"
+                                    class="text-gray-400">-</span>
+                            </td>
+                            <td>
+                                <span class="badge" [ngClass]="getActionBadgeClass(log.action)">
+                                    {{ log.action }}
+                                </span>
+                            </td>
+                            <td>{{ log.ip_address || '-' }}</td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary border-0 p-1"
+                                        (click)="viewLog(log)" title="View">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                        (click)="deleteLog(log.id!)" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="text-sm text-gray-500">Showing 1 to {{ logs.length }} of {{ logs.length }} results</div>
+    </div>
+
+    <!-- View Modal -->
+    <div class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" *ngIf="showModal" (click)="closeModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8">
+            <div class="panel my-8 w-full max-w-lg overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()">
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-bold">View Activity Log</h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()">
+                        <icon-x />
+                    </button>
+                </div>
+                <div class="p-5" *ngIf="selectedLog">
+                    <div class="mb-4">
+                        <label class="font-semibold">User:</label>
+                        <p class="mt-2">{{ selectedLog.user?.name || 'System' }} ({{ selectedLog.user?.email }})</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">Action:</label>
+                        <span class="badge ml-2" [ngClass]="getActionBadgeClass(selectedLog.action)">
+                            {{ selectedLog.action }}
+                        </span>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">Entity:</label>
+                        <p class="mt-2">{{ selectedLog.entity_type }} #{{ selectedLog.entity_id }}</p>
+                    </div>
+                    <div class="mb-4" *ngIf="selectedLog.old_values">
+                        <label class="font-semibold">Old Values:</label>
+                        <pre
+                            class="mt-2 rounded bg-gray-100 p-3 text-sm dark:bg-gray-800">{{ selectedLog.old_values }}</pre>
+                    </div>
+                    <div class="mb-4" *ngIf="selectedLog.new_values">
+                        <label class="font-semibold">New Values:</label>
+                        <pre
+                            class="mt-2 rounded bg-gray-100 p-3 text-sm dark:bg-gray-800">{{ selectedLog.new_values }}</pre>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">IP Address:</label>
+                        <p class="mt-2">{{ selectedLog.ip_address || '-' }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">User Agent:</label>
+                        <p class="mt-2 text-sm">{{ selectedLog.user_agent || '-' }}</p>
+                    </div>
+                    <div class="mb-4">
+                        <label class="font-semibold">Created At:</label>
+                        <p class="mt-2">{{ selectedLog.created_at | date:'yyyy-MM-dd HH:mm:ss' }}</p>
+                    </div>
+                    <div class="mt-8 flex justify-end">
+                        <button type="button" class="btn btn-outline-danger" (click)="closeModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

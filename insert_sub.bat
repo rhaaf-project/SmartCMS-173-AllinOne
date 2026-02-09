@@ -1,0 +1,1 @@
+ssh root@103.154.80.171 "mysql -u root smartucx_db -e \"INSERT INTO sub_branches (id, customer_id, branch_id, name, code, city, is_active) VALUES (1, 2, 1, 'KAI Juanda Cimahi', 'KAI CMH 011', 'Cimahi', 1);\""

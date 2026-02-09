@@ -1,0 +1,189 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <!-- Header -->
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">SBC Status Monitor</h5>
+            <div class="flex items-center gap-3 ltr:ml-auto rtl:mr-auto">
+                <!-- SBC Selector -->
+                <select [(ngModel)]="selectedSbcId" (ngModelChange)="onSbcChange()" class="form-select w-auto">
+                    <option [ngValue]="null">Select SBC</option>
+                    <option *ngFor="let sbc of sbcNodes" [ngValue]="sbc.id">{{ sbc.name }}</option>
+                </select>
+                <!-- Auto Refresh Toggle -->
+                <label class="inline-flex cursor-pointer items-center">
+                    <input type="checkbox" [(ngModel)]="autoRefreshEnabled" (ngModelChange)="toggleAutoRefresh()"
+                        class="form-checkbox" />
+                    <span class="ml-2 text-sm">Auto Refresh</span>
+                </label>
+                <!-- Manual Refresh Button -->
+                <button type="button" class="btn btn-primary btn-sm" (click)="manualRefresh()"
+                    [disabled]="isRefreshing || !selectedSbcId">
+                    <icon-refresh class="shrink-0" [ngClass]="{'animate-spin': isRefreshing}" />
+                    <span class="ml-1">Refresh</span>
+                </button>
+                <!-- Export CSV Button -->
+                <button type="button" class="btn btn-success btn-sm" (click)="exportCSV()"
+                    [disabled]="connectionStatuses.length === 0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" class="mr-1">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    CSV
+                </button>
+                <!-- Print Button -->
+                <button type="button" class="btn btn-secondary btn-sm" (click)="printReport()"
+                    [disabled]="connectionStatuses.length === 0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" class="mr-1">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                    Print
+                </button>
+            </div>
+        </div>
+
+        <!-- SBC Info Header -->
+        <div *ngIf="selectedSbc" class="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div class="panel bg-primary/10 p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">SBC Name</div>
+                <div class="text-lg font-semibold">{{ selectedSbc.name }}</div>
+            </div>
+            <div class="panel bg-info/10 p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">IP Address</div>
+                <div class="text-lg font-mono">{{ selectedSbc.host }}</div>
+            </div>
+            <div class="panel bg-secondary/10 p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">SIP Port</div>
+                <div class="text-lg font-mono">{{ selectedSbc.port }}</div>
+            </div>
+            <div class="panel p-4" [ngClass]="selectedSbc.is_active ? 'bg-success/10' : 'bg-danger/10'">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Status</div>
+                <div class="text-lg font-semibold" [ngClass]="selectedSbc.is_active ? 'text-success' : 'text-danger'">
+                    {{ selectedSbc.is_active ? 'Active' : 'Inactive' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Summary Cards -->
+        <div *ngIf="selectedSbc && connectionStatuses.length > 0" class="mb-5 grid grid-cols-2 gap-4 md:grid-cols-5">
+            <div class="panel bg-success/10 p-4 text-center">
+                <div class="text-2xl font-bold text-success">{{ okCount }}</div>
+                <div class="text-xs text-gray-500">OK</div>
+            </div>
+            <div class="panel bg-warning/10 p-4 text-center">
+                <div class="text-2xl font-bold text-warning">{{ laggedCount }}</div>
+                <div class="text-xs text-gray-500">Lagged</div>
+            </div>
+            <div class="panel bg-danger/10 p-4 text-center">
+                <div class="text-2xl font-bold text-danger">{{ unreachableCount }}</div>
+                <div class="text-xs text-gray-500">Unreachable</div>
+            </div>
+            <div class="panel bg-info/10 p-4 text-center">
+                <div class="text-2xl font-bold text-info">{{ registeredCount }}</div>
+                <div class="text-xs text-gray-500">Registered</div>
+            </div>
+            <div class="panel bg-primary/10 p-4 text-center">
+                <div class="text-2xl font-bold text-primary">{{ totalActiveCalls }}</div>
+                <div class="text-xs text-gray-500">Active Calls</div>
+            </div>
+        </div>
+
+        <!-- Connection Status List -->
+        <div class="mb-3">
+            <h6 class="font-semibold mb-3">Connection Status List</h6>
+            <div class="table-responsive">
+                <table class="table-hover" id="sbc-status-table">
+                    <thead>
+                        <tr>
+                            <th>Peer Name</th>
+                            <th>Type</th>
+                            <th>Remote Address</th>
+                            <th class="text-center">Registration</th>
+                            <th class="text-center">Connection</th>
+                            <th class="text-center">Latency</th>
+                            <th class="text-center">Calls</th>
+                            <th class="text-center">Last Activity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading || isRefreshing">
+                            <td colspan="8" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && !isRefreshing && !selectedSbcId">
+                            <td colspan="8" class="text-center text-gray-500">Please select an SBC to view connection
+                                status</td>
+                        </tr>
+                        <tr *ngIf="!isLoading && !isRefreshing && selectedSbcId && connectionStatuses.length === 0">
+                            <td colspan="8" class="text-center text-gray-500">No connections found for this SBC</td>
+                        </tr>
+                        <tr *ngFor="let conn of connectionStatuses">
+                            <td>
+                                <div class="font-semibold">{{ conn.peer_name }}</div>
+                                <div *ngIf="conn.local_user" class="text-xs text-gray-500">User: {{ conn.local_user }}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge rounded-full px-2 py-1 text-xs"
+                                    [ngClass]="getPeerTypeBadgeClass(conn.peer_type)">
+                                    {{ getPeerTypeLabel(conn.peer_type) }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="font-mono text-sm">{{ conn.remote_address }}</span>
+                            </td>
+                            <td class="text-center" style="text-align: -webkit-center;">
+                                <span class="badge rounded-full px-2 py-1 text-xs"
+                                    [ngClass]="getRegistrationStatusClass(conn.registration_status)">
+                                    {{ conn.registration_status }}
+                                </span>
+                            </td>
+                            <td class="text-center" style="text-align: -webkit-center;">
+                                <span class="badge rounded-full px-3 py-1"
+                                    [ngClass]="getConnectionStatusClass(conn.connection_status)">
+                                    <icon-circle-check *ngIf="conn.connection_status === 'OK'"
+                                        class="inline-block w-4 h-4 mr-1" />
+                                    <icon-x-circle *ngIf="conn.connection_status === 'UNREACHABLE'"
+                                        class="inline-block w-4 h-4 mr-1" />
+                                    <span *ngIf="conn.connection_status === 'LAGGED'" class="mr-1">⚠</span>
+                                    {{ conn.connection_status }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span *ngIf="conn.latency_ms !== null" class="font-mono"
+                                    [ngClass]="conn.latency_ms > 100 ? 'text-warning' : 'text-success'">
+                                    {{ conn.latency_ms }}ms
+                                </span>
+                                <span *ngIf="conn.latency_ms === null" class="text-gray-400">-</span>
+                            </td>
+                            <td class="text-center">
+                                <span class="font-mono">
+                                    {{ conn.active_calls }}<span *ngIf="conn.max_calls">/{{ conn.max_calls }}</span>
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                <span class="text-sm text-gray-500">{{ formatLastActivity(conn.last_activity) }}</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="flex items-center justify-between text-sm text-gray-500">
+            <div>Showing {{ connectionStatuses.length }} connection(s)</div>
+            <div *ngIf="lastRefreshed">
+                Last refreshed: {{ lastRefreshed | date:'HH:mm:ss' }}
+                <span *ngIf="autoRefreshEnabled" class="ml-2 text-primary">(Auto-refresh: 30s)</span>
+            </div>
+        </div>
+    </div>
+</div>

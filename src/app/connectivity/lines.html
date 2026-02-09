@@ -1,0 +1,187 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Lines</h5>
+            <div class="flex ltr:ml-auto rtl:mr-auto">
+                <div class="relative mr-4">
+                    <input type="text" class="form-input-sm form-input w-auto pr-8" placeholder="Search..."
+                        [(ngModel)]="search" />
+                    <div class="absolute top-1/2 right-2 -translate-y-1/2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                            class="text-white-dark">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                            </circle>
+                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" (click)="openCreateModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                        class="ltr:mr-1 rtl:ml-1">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New Lines
+                </button>
+            </div>
+        </div>
+
+        <div class="mb-5">
+            <div class="table-responsive">
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th>Call Server</th>
+                            <th>Line</th>
+                            <th>Name</th>
+                            <th class="text-center">Active</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading">
+                            <td colspan="5" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent align-middle">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && lines.length === 0">
+                            <td colspan="5" class="text-center">No lines found</td>
+                        </tr>
+                        <tr *ngFor="let line of lines">
+                            <td>
+                                <div class="whitespace-nowrap">{{ line.call_server?.name || '-' }}</div>
+                            </td>
+                            <td>{{ line.line_number }}</td>
+                            <td>
+                                <div class="font-semibold">{{ line.name }}</div>
+                            </td>
+                            <td class="text-center" style="text-align: -webkit-center;">
+                                <icon-circle-check *ngIf="line.is_active" class="text-success" />
+                            </td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary border-0 p-1"
+                                        (click)="copyRecord(line)" title="Copy">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning border-0 p-1"
+                                        (click)="openEditModal(line)" title="Edit">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                        (click)="deleteLine(line.id!)" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Showing X of Y -->
+        <div class="text-sm text-gray-500 dark:text-gray-400">
+            Showing 1 to {{ lines.length }} of {{ lines.length }} results
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8">
+            <div class="panel my-8 w-full max-w-2xl overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()" [@toggleAnimation]>
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-bold">
+                        {{ modalMode === 'create' ? 'Create Line' : modalMode === 'edit' ? 'Edit Lines' : 'View Line' }}
+                    </h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-5">
+                    <h6 class="text-base font-semibold mb-4">Line Details</h6>
+                    <form (ngSubmit)="handleSubmit()">
+                        <div class="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2">
+                            <div>
+                                <label for="call_server_id">Call Server <span class="text-danger">*</span></label>
+                                <select id="call_server_id" [(ngModel)]="formData.call_server_id" name="call_server_id"
+                                    class="form-select" [disabled]="modalMode === 'view'" required>
+                                    <option [ngValue]="null">Select Call Server</option>
+                                    <option *ngFor="let cs of callServers" [ngValue]="cs.id">
+                                        {{ cs.name }}
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="line_number">Line <span class="text-danger">*</span></label>
+                                <input id="line_number" type="text" [(ngModel)]="formData.line_number"
+                                    name="line_number" class="form-input" [disabled]="modalMode === 'view'" required />
+                            </div>
+
+                            <div>
+                                <label for="name">Name <span class="text-danger">*</span></label>
+                                <input id="name" type="text" [(ngModel)]="formData.name" name="name" class="form-input"
+                                    [disabled]="modalMode === 'view'" required />
+                            </div>
+
+                            <div>
+                                <label for="secret">Secret</label>
+                                <input id="secret" type="password" [(ngModel)]="formData.secret" name="secret"
+                                    class="form-input" [disabled]="modalMode === 'view'" />
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label for="description">Description</label>
+                                <textarea id="description" [(ngModel)]="formData.description" name="description"
+                                    rows="3" class="form-textarea" [disabled]="modalMode === 'view'"></textarea>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="inline-flex cursor-pointer">
+                                    <input type="checkbox" [(ngModel)]="formData.is_active" name="is_active"
+                                        class="form-checkbox" [disabled]="modalMode === 'view'" />
+                                    <span class="ml-2">Active</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mt-8 flex items-center justify-start gap-3">
+                            <button *ngIf="modalMode !== 'view'" type="submit" class="btn btn-warning">
+                                Save changes
+                            </button>
+                            <button type="button" class="btn btn-dark" (click)="closeModal()">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

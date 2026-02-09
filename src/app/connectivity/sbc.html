@@ -1,0 +1,264 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">SBC Nodes (Servers)</h5>
+            <div class="flex ltr:ml-auto rtl:mr-auto">
+                <div class="relative mr-4">
+                    <input type="text" placeholder="Search..." class="form-input-sm form-input w-auto pr-8"
+                        [(ngModel)]="search" />
+                    <div class="absolute top-1/2 right-2 -translate-y-1/2"><svg width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" class="text-white-dark">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                            </circle>
+                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                        </svg></div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" (click)="openCreateModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" class="ltr:mr-1 rtl:ml-1">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    New SBC Node
+                </button>
+            </div>
+        </div>
+        <div class="mb-5">
+            <div class="table-responsive">
+                <table class="table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>IP Address / Host</th>
+                            <th>SIP Port</th>
+                            <th>Description</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngIf="isLoading">
+                            <td colspan="6" class="text-center">
+                                <div
+                                    class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr *ngIf="!isLoading && filteredSBCs.length === 0">
+                            <td colspan="6" class="text-center">No SBC nodes found</td>
+                        </tr>
+                        <tr *ngFor="let sbc of filteredSBCs" class="group">
+                            <td>
+                                <div class="font-semibold">{{ sbc.name }}</div>
+                            </td>
+                            <td>{{ sbc.host }}</td>
+                            <td>{{ sbc.port }}</td>
+                            <td>{{ sbc.description || '-' }}</td>
+                            <td class="text-center" style="text-align: -webkit-center;">
+                                <icon-circle-check *ngIf="sbc.is_active" class="text-success" />
+                                <icon-x-circle *ngIf="!sbc.is_active" class="text-danger" />
+                            </td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-info border-0 p-1"
+                                        (click)="openReportView(sbc)" title="View Report">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary border-0 p-1"
+                                        (click)="copyRecord(sbc)" title="Copy">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning border-0 p-1"
+                                        (click)="openEditModal(sbc)" title="Edit">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                        (click)="deleteSBC(sbc.id!)" title="Delete">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8">
+            <div class="panel my-8 w-full max-w-lg overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()" [@toggleAnimation]>
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Create SBC Node' : 'Edit SBC Node' }}
+                    </h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()"><svg width="20"
+                            height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg></button>
+                </div>
+                <div class="p-5">
+                    <form (ngSubmit)="handleSubmit()">
+                        <div class="mb-4">
+                            <label for="name">SBC Name <span class="text-danger">*</span></label>
+                            <input id="name" type="text" [(ngModel)]="formData.name" name="name" class="form-input"
+                                required />
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="host">IP Address / Host <span class="text-danger">*</span></label>
+                                <input id="host" type="text" [(ngModel)]="formData.host" name="host" class="form-input"
+                                    required />
+                            </div>
+                            <div>
+                                <label for="port">SIP Port</label>
+                                <input id="port" type="number" [(ngModel)]="formData.port" name="port"
+                                    class="form-input" />
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="description">Description</label>
+                            <textarea id="description" [(ngModel)]="formData.description" name="description"
+                                class="form-textarea" rows="3"></textarea>
+                        </div>
+                        <div class="flex items-center mb-4">
+                            <label class="w-12 h-6 relative mb-0">
+                                <input type="checkbox" [(ngModel)]="formData.is_active" name="is_active"
+                                    class="custom_switch absolute w-full h-full opacity-0 z-10 cursor-pointer peer" />
+                                <span
+                                    class="bg-[#ebedf2] dark:bg-dark block h-full rounded-full before:absolute before:left-1 before:bg-white dark:before:bg-white-dark dark:peer-checked:before:bg-white before:bottom-1 before:w-4 before:h-4 before:rounded-full peer-checked:before:left-7 peer-checked:bg-warning before:transition-all before:duration-300"></span>
+                            </label>
+                            <span class="ml-3">Active Status</span>
+                        </div>
+
+                        <div class="mt-8 flex items-center justify-end gap-3">
+                            <button type="button" class="btn btn-outline-dark" (click)="closeModal()">Cancel</button>
+                            <button type="submit" class="btn btn-warning">{{ modalMode === 'create' ? 'Create' : 'Save
+                                Changes' }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report View Modal (Printable) -->
+    <div *ngIf="showReportModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60 print:bg-white print:static"
+        (click)="closeReportModal()">
+        <div class="flex min-h-screen items-start justify-center px-4 py-8 print:p-0">
+            <div class="panel my-8 w-full max-w-4xl overflow-hidden rounded-lg border-0 bg-white print:shadow-none print:my-0 print:max-w-none"
+                (click)="$event.stopPropagation()">
+
+                <!-- Report Header (hides on print) -->
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md print:hidden">
+                    <h5 class="text-lg font-bold">View</h5>
+                    <div class="flex items-center gap-2">
+                        <button type="button" class="btn btn-primary btn-sm" (click)="printReport()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="mr-1">
+                                <path d="M6 9V2H18V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <path
+                                    d="M6 18H4C3.46957 18 2.96086 17.7893 2.58579 17.4142C2.21071 17.0391 2 16.5304 2 16V11C2 10.4696 2.21071 9.96086 2.58579 9.58579C2.96086 9.21071 3.46957 9 4 9H20C20.5304 9 21.0391 9.21071 21.4142 9.58579C21.7893 9.96086 22 10.4696 22 11V16C22 16.5304 21.7893 17.0391 21.4142 17.4142C21.0391 17.7893 20.5304 18 20 18H18"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round" />
+                                <rect x="6" y="14" width="12" height="8" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            Print
+                        </button>
+                        <button type="button" class="text-white-dark hover:text-dark" (click)="closeReportModal()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                                <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Report Content (Printable Area) -->
+                <div class="p-6 print:p-4" id="reportContent">
+                    <!-- SBC Info Section -->
+                    <div class="mb-6">
+                        <h2
+                            class="text-lg font-semibold text-gray-700 border-b border-white-light dark:border-[#1b2e4b] pb-2 mb-3">
+                            SBC Node Information</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="border-b border-dotted border-white-light dark:border-[#1b2e4b] pb-2">
+                                <span class="text-sm text-gray-500">SBC Name:</span>
+                                <span class="font-semibold ml-2">{{ reportData?.name }}</span>
+                            </div>
+                            <div class="border-b border-dotted border-white-light dark:border-[#1b2e4b] pb-2">
+                                <span class="text-sm text-gray-500">Status:</span>
+                                <span class="ml-2 px-2 py-1 text-xs rounded"
+                                    [ngClass]="reportData?.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
+                                    {{ reportData?.is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </div>
+                            <div class="border-b border-dotted border-white-light dark:border-[#1b2e4b] pb-2">
+                                <span class="text-sm text-gray-500">IP Address / Host:</span>
+                                <span class="font-mono ml-2">{{ reportData?.host }}</span>
+                            </div>
+                            <div class="border-b border-dotted border-white-light dark:border-[#1b2e4b] pb-2">
+                                <span class="text-sm text-gray-500">SIP Port:</span>
+                                <span class="font-mono ml-2">{{ reportData?.port }}</span>
+                            </div>
+                            <div
+                                class="border-b border-dotted border-white-light dark:border-[#1b2e4b] pb-2 col-span-2">
+                                <span class="text-sm text-gray-500">Type:</span>
+                                <span class="font-semibold ml-2 uppercase">{{ reportData?.type }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description Section -->
+                    <div class="mb-6" *ngIf="reportData?.description">
+                        <h2
+                            class="text-lg font-semibold text-gray-700 border-b border-white-light dark:border-[#1b2e4b] pb-2 mb-3">
+                            Description</h2>
+                        <p class="text-gray-600 whitespace-pre-wrap">{{ reportData?.description }}</p>
+                    </div>
+
+                    <!-- Record Information -->
+                    <div class="mb-4">
+                        <h2
+                            class="text-lg font-semibold text-gray-700 border-b border-white-light dark:border-[#1b2e4b] pb-2 mb-3">
+                            Record Information</h2>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-500">Generated:</span>
+                                <span class="ml-2">{{ reportGeneratedDate | date:'medium' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div
+                        class="border-t border-white-light dark:border-[#1b2e4b] pt-4 mt-6 text-center text-xs text-gray-500 dark:text-gray-400">
+                        <p>© 2026 SmartUCX</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

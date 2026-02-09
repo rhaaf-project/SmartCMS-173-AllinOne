@@ -1,0 +1,261 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Conference</h5>
+            <div class="flex ltr:ml-auto rtl:mr-auto">
+                <div class="relative mr-4">
+                    <input type="text" class="form-input-sm form-input w-auto pr-8" [(ngModel)]="search"
+                        placeholder="Search..." />
+                    <div class="absolute top-1/2 right-2 -translate-y-1/2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="text-white-dark">
+                            <circle cx="11.5" cy="11.5" r="9.5" stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                            </circle>
+                            <path d="M18.5 18.5L22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-warning btn-sm" (click)="openModal('create')"><icon-plus
+                        class="ltr:mr-1 rtl:ml-1" />Create New</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-hover">
+                <thead>
+                    <tr>
+                        <th>Number</th>
+                        <th>Name</th>
+                        <th>User PIN</th>
+                        <th>Max Participants</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngIf="isLoading">
+                        <td colspan="5" class="text-center">
+                            <div
+                                class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
+                            </div>
+                        </td>
+                    </tr>
+                    <tr *ngIf="!isLoading && items.length === 0">
+                        <td colspan="5" class="text-center">No data found</td>
+                    </tr>
+                    <tr *ngFor="let item of items">
+                        <td class="font-semibold">{{ item.conference_number }}</td>
+                        <td>{{ item.conference_name }}</td>
+                        <td>{{ item.user_pin || '-' }}</td>
+                        <td>{{ item.max_participants }}</td>
+                        <td class="text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <button type="button" class="btn btn-sm btn-outline-warning border-0 p-1"
+                                    (click)="openModal('edit', item)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger border-0 p-1"
+                                    (click)="delete(item.id)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                        </path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div *ngIf="showModal" class="fixed inset-0 z-[999] overflow-y-auto bg-[black]/60" (click)="closeModal()">
+        <div class="flex min-h-screen items-center justify-center px-4">
+            <div class="panel my-8 w-full max-w-4xl overflow-hidden rounded-lg border-0 p-0"
+                (click)="$event.stopPropagation()" [@toggleAnimation]>
+                <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
+                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Add Conference' : 'Edit Conference' }}
+                    </h5>
+                    <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <ng-scrollbar class="max-h-[80vh]" visibility="hover">
+                    <div class="p-5">
+                        <form (ngSubmit)="save()">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label>Conference Number <span class="text-danger">*</span></label><input
+                                        type="text" class="form-input" [(ngModel)]="form.conference_number"
+                                        name="conference_number" required /></div>
+                                <div><label>Conference Name <span class="text-danger">*</span></label><input type="text"
+                                        class="form-input" [(ngModel)]="form.conference_name" name="conference_name"
+                                        required /></div>
+                                <div><label>User PIN</label><input type="text" class="form-input"
+                                        [(ngModel)]="form.user_pin" name="user_pin" /></div>
+                                <div><label>Admin PIN</label><input type="text" class="form-input"
+                                        [(ngModel)]="form.admin_pin" name="admin_pin" /></div>
+                                <div><label>Language</label><select class="form-select" [(ngModel)]="form.language"
+                                        name="language">
+                                        <option value="Inherit">Inherit</option>
+                                        <option value="en">English</option>
+                                        <option value="id">Indonesian</option>
+                                    </select></div>
+                                <div><label>Join Message</label><select class="form-select"
+                                        [(ngModel)]="form.join_message" name="join_message">
+                                        <option value="None">None</option>
+                                        <option value="Default">Default</option>
+                                    </select></div>
+                                <div><label>Leader Wait</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="leader_wait" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.leader_wait" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="leader_wait" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.leader_wait" /><span class="ml-2">No</span></label>
+                                    </div>
+                                </div>
+                                <div><label>Leader Leave</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="leader_leave" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.leader_leave" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="leader_leave" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.leader_leave" /><span class="ml-2">No</span></label>
+                                    </div>
+                                </div>
+                                <div><label>Talker Optimization</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="talker_optimization" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.talker_optimization" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="talker_optimization" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.talker_optimization" /><span
+                                                class="ml-2">No</span></label></div>
+                                </div>
+                                <div><label>Talker Detection</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="talker_detection" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.talker_detection" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="talker_detection" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.talker_detection" /><span
+                                                class="ml-2">No</span></label></div>
+                                </div>
+                                <div><label>Quiet Mode</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="quiet_mode" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.quiet_mode" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="quiet_mode" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.quiet_mode" /><span class="ml-2">No</span></label>
+                                    </div>
+                                </div>
+                                <div><label>User Count</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="user_count" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.user_count" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="user_count" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.user_count" /><span class="ml-2">No</span></label>
+                                    </div>
+                                </div>
+                                <div><label>User Join/Leave</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="user_join_leave" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.user_join_leave" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="user_join_leave" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.user_join_leave" /><span
+                                                class="ml-2">No</span></label></div>
+                                </div>
+                                <div><label>Music on Hold</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="music_on_hold" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.music_on_hold" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="music_on_hold" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.music_on_hold" /><span class="ml-2">No</span></label>
+                                    </div>
+                                </div>
+                                <div><label>Music on Hold Class</label><select class="form-select"
+                                        [(ngModel)]="form.music_on_hold_class" name="music_on_hold_class">
+                                        <option value="Inherit">Inherit</option>
+                                        <option value="default">Default</option>
+                                    </select></div>
+                                <div><label>Allow Menu</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="allow_menu" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.allow_menu" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="allow_menu" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.allow_menu" /><span class="ml-2">No</span></label>
+                                    </div>
+                                </div>
+                                <div><label>Record Conference</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="record_conference" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.record_conference" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="record_conference" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.record_conference" /><span
+                                                class="ml-2">No</span></label></div>
+                                </div>
+                                <div><label>Maximum Participants</label><input type="number" class="form-input"
+                                        [(ngModel)]="form.max_participants" name="max_participants" /></div>
+                                <div><label>Mute on Join</label>
+                                    <div class="flex gap-2"><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="mute_on_join" class="form-radio" [value]="1"
+                                                [(ngModel)]="form.mute_on_join" /><span
+                                                class="ml-2">Yes</span></label><label
+                                            class="inline-flex items-center cursor-pointer"><input type="radio"
+                                                name="mute_on_join" class="form-radio" [value]="0"
+                                                [(ngModel)]="form.mute_on_join" /><span class="ml-2">No</span></label>
+                                    </div>
+                                </div>
+                                <div><label>Member Timeout</label><input type="number" class="form-input"
+                                        [(ngModel)]="form.member_timeout" name="member_timeout" /></div>
+                            </div>
+                            <div class="flex justify-end gap-3 mt-8">
+                                <button type="button" class="btn btn-outline-danger"
+                                    (click)="closeModal()">Cancel</button>
+                                <button type="submit" class="btn btn-warning">{{ modalMode === 'create' ? 'Create' :
+                                    'Update' }}</button>
+                            </div>
+                        </form>
+                    </div>
+                </ng-scrollbar>
+            </div>
+        </div>
+    </div>
+</div>

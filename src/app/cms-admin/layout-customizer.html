@@ -1,0 +1,176 @@
+<div>
+    <div class="panel" style="padding: 15px;">
+        <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
+            <h5 class="text-medium font-medium dark:text-white-light">Layout Customizer</h5>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Color Scheme -->
+            <div class="rounded-md border border-dashed border-[#e0e6ed] p-3 dark:border-[#1b2e4b]">
+                <h5 class="mb-1 text-base leading-none dark:text-white">Color Scheme</h5>
+                <p class="text-xs text-white-dark mb-3">Overall light or dark presentation.</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <button type="button" class="btn"
+                        [ngClass]="[store.theme === 'light' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleTheme', payload: 'light'})">
+                        <icon-sun class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2" />
+                        Light
+                    </button>
+                    <button type="button" class="btn"
+                        [ngClass]="[store.theme === 'dark' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleTheme', payload: 'dark'})">
+                        <icon-moon class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2" />
+                        Dark
+                    </button>
+                    <button type="button" class="btn"
+                        [ngClass]="[store.theme === 'system' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleTheme', payload:'system'})">
+                        <icon-laptop class="h-5 w-5 shrink-0 ltr:mr-2 rtl:ml-2" />
+                        System
+                    </button>
+                </div>
+            </div>
+
+            <!-- Primary Color -->
+            <div class="rounded-md border border-dashed border-[#e0e6ed] p-3 dark:border-[#1b2e4b]">
+                <h5 class="mb-1 text-base leading-none dark:text-white">Primary Color</h5>
+                <p class="text-xs text-white-dark mb-3">Dominant theme color.</p>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="h-6 w-6 rounded-full bg-[#0264c2] border-2"
+                        [ngClass]="{'border-white dark:border-white-light': store.primaryColor === 'blue', 'border-transparent': store.primaryColor !== 'blue'}"
+                        (click)="storeData.dispatch({ type: 'togglePrimaryColor', payload: 'blue'})"
+                        title="Blue"></button>
+                    <button type="button" class="h-6 w-6 rounded-full bg-[#f97316] border-2"
+                        [ngClass]="{'border-white dark:border-white-light': store.primaryColor === 'orange', 'border-transparent': store.primaryColor !== 'orange'}"
+                        (click)="storeData.dispatch({ type: 'togglePrimaryColor', payload: 'orange'})"
+                        title="Orange"></button>
+                    <button type="button" class="h-6 w-6 rounded-full bg-[#ef4444] border-2"
+                        [ngClass]="{'border-white dark:border-white-light': store.primaryColor === 'red', 'border-transparent': store.primaryColor !== 'red'}"
+                        (click)="storeData.dispatch({ type: 'togglePrimaryColor', payload: 'red'})"
+                        title="Red"></button>
+                    <button type="button" class="h-6 w-6 rounded-full bg-[#22c55e] border-2"
+                        [ngClass]="{'border-white dark:border-white-light': store.primaryColor === 'green', 'border-transparent': store.primaryColor !== 'green'}"
+                        (click)="storeData.dispatch({ type: 'togglePrimaryColor', payload: 'green'})"
+                        title="Green"></button>
+                    <button type="button" class="h-6 w-6 rounded-full bg-[#8b5cf6] border-2"
+                        [ngClass]="{'border-white dark:border-white-light': store.primaryColor === 'purple', 'border-transparent': store.primaryColor !== 'purple'}"
+                        (click)="storeData.dispatch({ type: 'togglePrimaryColor', payload: 'purple'})"
+                        title="Purple"></button>
+                    <button type="button" class="h-6 w-6 rounded-full bg-[#06b6d4] border-2"
+                        [ngClass]="{'border-white dark:border-white-light': store.primaryColor === 'cyan', 'border-transparent': store.primaryColor !== 'cyan'}"
+                        (click)="storeData.dispatch({ type: 'togglePrimaryColor', payload: 'cyan'})"
+                        title="Cyan"></button>
+                </div>
+            </div>
+
+            <!-- Navigation Position -->
+            <div class="rounded-md border border-dashed border-[#e0e6ed] p-3 dark:border-[#1b2e4b]">
+                <h5 class="mb-1 text-base leading-none dark:text-white">Navigation Position</h5>
+                <p class="text-xs text-white-dark mb-3">Select the primary navigation paradigm.</p>
+                <div class="grid grid-cols-3 gap-2 mb-4">
+                    <button type="button" class="btn"
+                        [ngClass]="[store.menu === 'horizontal' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleMenu', payload: 'horizontal'})">
+                        Horizontal
+                    </button>
+                    <button type="button" class="btn"
+                        [ngClass]="[store.menu === 'vertical' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleMenu', payload: 'vertical'})">
+                        Vertical
+                    </button>
+                    <button type="button" class="btn"
+                        [ngClass]="[store.menu === 'collapsible-vertical' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleMenu', payload: 'collapsible-vertical'})">
+                        Collapsible
+                    </button>
+                </div>
+                <label class="inline-flex items-center text-primary cursor-pointer">
+                    <input [ngModel]="store.semidark" type="checkbox" class="form-checkbox"
+                        (ngModelChange)="storeData.dispatch({ type: 'toggleSemidark', payload: !store.semidark})" />
+                    <span class="ml-2">Semi Dark (Sidebar & Header)</span>
+                </label>
+            </div>
+
+            <!-- Layout Style -->
+            <div class="rounded-md border border-dashed border-[#e0e6ed] p-3 dark:border-[#1b2e4b]">
+                <h5 class="mb-1 text-base leading-none dark:text-white">Layout Style</h5>
+                <p class="text-xs text-white-dark mb-3">Select the primary layout style.</p>
+                <div class="flex gap-2">
+                    <button type="button" class="btn flex-1"
+                        [ngClass]="[store.layout === 'boxed-layout' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleLayout', payload: 'boxed-layout'})">
+                        Box
+                    </button>
+                    <button type="button" class="btn flex-1"
+                        [ngClass]="[store.layout === 'full' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleLayout', payload: 'full'})">
+                        Full
+                    </button>
+                </div>
+            </div>
+
+            <!-- Direction -->
+            <div class="rounded-md border border-dashed border-[#e0e6ed] p-3 dark:border-[#1b2e4b]">
+                <h5 class="mb-1 text-base leading-none dark:text-white">Direction</h5>
+                <p class="text-xs text-white-dark mb-3">Select the direction for your app.</p>
+                <div class="flex gap-2">
+                    <button type="button" class="btn flex-1"
+                        [ngClass]="[store.rtlClass === 'ltr' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleRTL', payload: 'ltr'});reloadRoute();">
+                        LTR
+                    </button>
+                    <button type="button" class="btn flex-1"
+                        [ngClass]="[store.rtlClass === 'rtl' ? 'btn-primary' : 'btn-outline-primary']"
+                        (click)="storeData.dispatch({ type: 'toggleRTL', payload: 'rtl'});reloadRoute();">
+                        RTL
+                    </button>
+                </div>
+            </div>
+
+            <!-- Navbar Type -->
+            <div class="rounded-md border border-dashed border-[#e0e6ed] p-3 dark:border-[#1b2e4b]">
+                <h5 class="mb-1 text-base leading-none dark:text-white">Navbar Type</h5>
+                <p class="text-xs text-white-dark mb-3">Sticky, Floating, or Static.</p>
+                <div class="flex items-center gap-4 text-primary">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input [checked]="store.navbar === 'navbar-sticky'" type="radio" value="navbar-sticky"
+                            class="form-radio"
+                            (change)="storeData.dispatch({ type: 'toggleNavbar', payload:'navbar-sticky'})" />
+                        <span class="ml-2">Sticky</span>
+                    </label>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input [checked]="store.navbar === 'navbar-floating'" type="radio" value="navbar-floating"
+                            class="form-radio"
+                            (change)="storeData.dispatch({ type: 'toggleNavbar', payload:'navbar-floating'})" />
+                        <span class="ml-2">Floating</span>
+                    </label>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input [checked]="store.navbar === 'navbar-static'" type="radio" value="navbar-static"
+                            class="form-radio"
+                            (change)="storeData.dispatch({ type: 'toggleNavbar', payload:'navbar-static'})" />
+                        <span class="ml-2">Static</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Router Transition -->
+            <div class="rounded-md border border-dashed border-[#e0e6ed] p-3 dark:border-[#1b2e4b]">
+                <h5 class="mb-1 text-base leading-none dark:text-white">Router Transition</h5>
+                <p class="text-xs text-white-dark mb-3">Animation of main content.</p>
+                <select [ngModel]="store.animation" class="form-select border-primary text-primary"
+                    (ngModelChange)="storeData.dispatch({type: 'toggleAnimation', payload:$event})">
+                    <option value="">None</option>
+                    <option value="animate__fadeIn">Fade</option>
+                    <option value="animate__fadeInDown">Fade Down</option>
+                    <option value="animate__fadeInUp">Fade Up</option>
+                    <option value="animate__fadeInLeft">Fade Left</option>
+                    <option value="animate__fadeInRight">Fade Right</option>
+                    <option value="animate__slideInDown">Slide Down</option>
+                    <option value="animate__slideInLeft">Slide Left</option>
+                    <option value="animate__slideInRight">Slide Right</option>
+                    <option value="animate__zoomIn">Zoom In</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>

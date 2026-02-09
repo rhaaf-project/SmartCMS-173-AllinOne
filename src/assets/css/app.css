@@ -1,0 +1,45 @@
+@import 'tippy.js/dist/tippy.css';
+@import 'highlight.js/styles/monokai-sublime.css';
+/* @import 'swiper/swiper-bundle.min.css'; */
+@import '../../../node_modules/swiper/swiper-bundle.min.css';
+@import 'ngx-lightbox/lightbox.css';
+@import '@ng-select/ng-select/themes/default.theme.css';
+@import 'quill/dist/quill.snow.css';
+@import 'file-upload-with-preview/dist/style.css';
+@import 'flatpickr/dist/flatpickr.min.css';
+@import 'nouislider/dist/nouislider.min.css';
+@import 'sweetalert2/themes/minimal.css';
+@import 'tailwind.css';
+
+/* Print Styles - Only show report modal content when printing */
+@media print {
+
+    /* Hide sidebar, header, navigation */
+    nav.sidebar,
+    .navbar,
+    header,
+    .sidebar {
+        display: none !important;
+    }
+
+    /* Hide page content except report */
+    .main-container>.main-content .panel:not(:has(#reportContent)) {
+        display: none !important;
+    }
+
+    /* Only show report modal */
+    #reportContent {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 20px !important;
+        margin: 0 !important;
+    }
+
+    /* Reset panel for print */
+    .panel {
+        box-shadow: none !important;
+        border: none !important;
+    }
+}
