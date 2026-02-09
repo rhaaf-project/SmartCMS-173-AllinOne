@@ -1,0 +1,1301 @@
+<!-- SmartX Turret Main Layout - Ported from vanilla JS -->
+<!-- Structure: Header + Container (Left Column + Middle Column) + FAB + Footer -->
+
+<!-- REMOTE AUDIO (Hidden element for SIP call audio) -->
+<audio id="remoteAudio" autoplay style="display: none;"></audio>
+<!-- RINGTONE AUDIO (Incoming call ring sound) -->
+<audio id="ringtone" src="assets/audio/phone-ringing-48238.mp3" loop style="display: none;"></audio>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay" class="login-overlay" *ngIf="showLogin">
+    <div class="login-logo-section">
+        <img src="assets/SMART_UCX_logo.jpg" alt="Logo" class="login-logo">
+        <h2 class="login-title">SYSTEM AUTHENTICATION</h2>
+        <div class="login-subtitle">SECURE TURRET ACCESS</div>
+    </div>
+
+    <div class="login-form-box">
+        <div class="login-field">
+            <label class="login-label">Username</label>
+            <input type="text" #usernameInput class="login-input" [(ngModel)]="loginUsername" placeholder="Enter ID"
+                (focus)="showKeyboard(usernameInput)" (keydown.enter)="processLogin()">
+        </div>
+
+        <div class="login-field">
+            <label class="login-label">Password</label>
+            <input type="password" #passwordInput class="login-input" [(ngModel)]="loginPassword"
+                placeholder="Enter Password" (focus)="showKeyboard(passwordInput)" (keydown.enter)="processLogin()">
+        </div>
+
+        <button class="login-btn" (click)="processLogin()">
+            CONNECT SYSTEM
+        </button>
+
+        <div class="login-status" [style.color]="loginStatusColor">
+            {{ loginStatus }}
+        </div>
+    </div>
+
+    <div class="login-version">{{ appVersion }}</div>
+</div>
+
+<!-- PTT OVERLAY - Hidden per user request, using ladder bars instead -->
+<div id="ptt-overlay" style="display: none;"></div>
+
+<!-- HEADER -->
+<header class="section-blue flex-shrink-0">
+    <div class="header-left">
+        <img src="assets/SMART_UCX_logo.jpg" alt="SmartTX UCX" class="header-logo">
+    </div>
+    <div class="d-flex flex-column" style="position: absolute;left: 220px; top: 18px;">
+        <span id="current-date" class="fw-bold">{{ currentDate }}</span>
+        <span id="current-time" class="current-time">{{ currentTime }}</span>
+    </div>
+    <div class="call-log me-auto">
+        <span class="log-title">LAST ACTIVE CALL</span>
+    </div>
+
+    <!-- Incoming Call Notification (Inside Header) -->
+    <div id="incomingCallModal" *ngIf="incomingCall"
+        style="display: flex; background-color: #3d0000; border: 2px solid #ff0000; border-radius: 4px; padding: 8px 12px; height: 50px; margin: 0 12px;">
+        <div
+            style="display: flex; align-items: center; justify-content: center; gap: 12px; height: 100%; color: white;">
+            <h3 style="font-size: 18px; font-weight: bold; margin: 0; color: #ff4d4d;">
+                {{ incomingCall.number }}</h3>
+            <div class="dial-action-btn btn-call-accept" (click)="acceptCall()"
+                style="width: 40px; height: 40px; cursor: pointer;"><span class="material-symbols-sharp"
+                    style="font-size: 20px;">call</span></div>
+            <div class="dial-action-btn btn-call-reject" (click)="rejectCall()"
+                style="width: 40px; height: 40px; cursor: pointer;"><span class="material-symbols-sharp"
+                    style="font-size: 20px;">call_end</span></div>
+        </div>
+    </div>
+
+    <div class="d-flex ms-auto" style="z-index: 1000;">
+        <div class="ribbon-btn settings" (click)="openSettings()" title="Settings">
+            <span class="material-symbols-sharp">settings</span>
+        </div>
+    </div>
+</header>
+
+<!-- MAIN CONTAINER -->
+<div class="container-fluid flex-grow-1 d-flex p-0 overflow-hidden">
+    <main class="col main-display">
+        <div id="page-content-container" class="flex-grow-1 row m-0 p-0">
+
+            <!-- LEFT COLUMN - CHANNEL GRID -->
+            <div class="col-4 left-column-style p-0">
+                <div class="left-column-wrapper">
+                    <div class="channel-main-area">
+                        <!-- Channel Grid Row -->
+                        <div class="grid-row">
+                            <div class="channel-scroll-area">
+                                <div class="grid-container">
+                                    <!-- 16 Channels in 2-column grid -->
+                                    @for (channel of channels; track channel.key) {
+                                    <div class="call-cell" [class.active-channel]="channel.isActive"
+                                        [class.calling-state]="channel.isCalling" [class.ptt-active]="channel.isPtt"
+                                        [class.speaking-red]="channel.isPtt"
+                                        [class.speaking-green]="channel.isActive && !channel.isPtt"
+                                        [class.selected]="channel.isSelected && !channel.isPtt"
+                                        [class.drag-over]="dragOverChannel === channel.key"
+                                        [attr.data-channel-key]="channel.key" (click)="selectChannel(channel)"
+                                        (mousedown)="startPTT($event, channel)" (mouseup)="stopPTT(channel)"
+                                        (mouseleave)="stopPTT(channel)" draggable="true"
+                                        (dragstart)="onChannelDragStart($event, channel)"
+                                        (dragover)="onChannelDragOver($event, channel)"
+                                        (dragleave)="onChannelDragLeave($event)"
+                                        (drop)="onChannelDrop($event, channel)">
+                                        <!-- Ladder Bars - SmartX style (controlled by parent cell classes) -->
+                                        <div class="ladder-bar left">
+                                            <div class="ladder-fill"></div>
+                                        </div>
+                                        <div class="ladder-bar right">
+                                            <div class="ladder-fill"></div>
+                                        </div>
+                                        <!-- Audio Recording Indicators (SmartX: 3 pre-rendered slots) -->
+                                        <div class="channel-audio-indicators"
+                                            style="position: absolute; top: 3px; left: 15px; z-index: 200; display: flex; align-items: center; gap: 2px;">
+                                            <!-- Slot 1 -->
+                                            <span class="material-symbols-sharp"
+                                                [style.opacity]="channel.channelRecordings?.[0] ? '1' : '0'"
+                                                [style.color]="channel.channelRecordings?.[0]?.color || '#888'"
+                                                style="font-size: 16px; cursor: pointer;"
+                                                (click)="playChannelRecordingAtIndex(channel, 0); $event.stopPropagation()">
+                                                play_arrow
+                                            </span>
+                                            <!-- Slot 2 -->
+                                            <span class="material-symbols-sharp"
+                                                [style.opacity]="channel.channelRecordings?.[1] ? '1' : '0'"
+                                                [style.color]="channel.channelRecordings?.[1]?.color || '#888'"
+                                                style="font-size: 16px; cursor: pointer;"
+                                                (click)="playChannelRecordingAtIndex(channel, 1); $event.stopPropagation()">
+                                                play_arrow
+                                            </span>
+                                            <!-- Slot 3 -->
+                                            <span class="material-symbols-sharp"
+                                                [style.opacity]="channel.channelRecordings?.[2] ? '1' : '0'"
+                                                [style.color]="channel.channelRecordings?.[2]?.color || '#888'"
+                                                style="font-size: 16px; cursor: pointer;"
+                                                (click)="playChannelRecordingAtIndex(channel, 2); $event.stopPropagation()">
+                                                play_arrow
+                                            </span>
+                                        </div>
+                                        <!-- Volume Icon -->
+                                        <span class="material-symbols-sharp">volume_up</span>
+                                        <!-- Cell Info -->
+                                        <div class="cell-info">
+                                            <div class="cell-name">{{ channel.name || 'Ch ' + channel.position }}</div>
+                                            <div class="cell-phone">{{ channel.extension }}</div>
+                                        </div>
+                                        <!-- Drag Handle (only show when occupied) -->
+                                        @if (channel.name) {
+                                        <div class="drag-handle" draggable="true"
+                                            (dragstart)="onDragHandleStart($event, channel)"
+                                            (dragend)="onDragHandleEnd($event, channel)"
+                                            (touchstart)="onDragHandleTouchStart($event, channel)"
+                                            (touchmove)="onDragHandleTouchMove($event)"
+                                            (touchend)="onDragHandleTouchEnd($event)">
+                                            <span class="material-symbols-sharp">drag_indicator</span>
+                                        </div>
+                                        }
+                                        <!-- Group Bars -->
+                                        <div class="group-bars-container">
+                                            <div class="group-bar bar-g1"
+                                                [class.active]="channel.groups?.includes('G1')"></div>
+                                            <div class="group-bar bar-g2"
+                                                [class.active]="channel.groups?.includes('G2')"></div>
+                                            <div class="group-bar bar-g3"
+                                                [class.active]="channel.groups?.includes('G3')"></div>
+                                        </div>
+                                    </div>
+                                    }
+                                </div>
+                            </div>
+                            <!-- Action Bar -->
+                            <div class="channel-action-bar">
+                                <div class="channel-action-btn hangup-btn"
+                                    [class.drag-over]="dragOverActionBtn === 'hangup'" (click)="hangupSelected()"
+                                    title="Hangup" (dragover)="onActionBtnDragOver($event, 'hangup')"
+                                    (dragleave)="onActionBtnDragLeave($event)"
+                                    (drop)="onActionBtnDrop($event, 'hangup')">
+                                    <span class="material-symbols-sharp">call_end</span>
+                                </div>
+                                <div class="channel-action-btn trash-btn"
+                                    [class.drag-over]="dragOverActionBtn === 'trash'" (click)="deleteSelected()"
+                                    title="Delete Channel" (dragover)="onActionBtnDragOver($event, 'trash')"
+                                    (dragleave)="onActionBtnDragLeave($event)"
+                                    (drop)="onActionBtnDrop($event, 'trash')">
+                                    <span class="material-symbols-sharp">delete</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Call Channel Button -->
+                        <div class="channel-call-area">
+                            <div class="channel-call-btn" [class.has-selection]="selectedChannel"
+                                (click)="callChannel()">
+                                <span class="material-symbols-sharp">call</span>
+                                CALL CHANNEL
+                            </div>
+                        </div>
+
+                        <!-- Group Talk Area -->
+                        <div class="group-talk-area">
+                            @for (group of groups; track group.id) {
+                            <div class="group-btn" [class.active-talk]="group.isActive"
+                                (mousedown)="startGroupPtt(group)" (mouseup)="stopGroupPtt(group)"
+                                (touchstart)="startGroupPtt(group)" (touchend)="stopGroupPtt(group)"
+                                (dragover)="onGroupBtnDragOver($event, group)" (drop)="onGroupBtnDrop($event, group)">
+                                <div class="group-title" style="pointer-events: none;">{{ group.id }}</div>
+                                <div class="group-subtitle" style="pointer-events: none;">HOLD TO TALK</div>
+                            </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MIDDLE COLUMN - DASHBOARD -->
+            <div class="col-8 p-0">
+                <div class="middle-column-wrapper">
+                    <!-- Main Content View -->
+                    <div class="main-content-view" id="main-content-view">
+
+                        <!-- ============= DASHBOARD VIEW ============= -->
+                        @if (isPanelActive('dashboard')) {
+                        <div class="dashboard-grid" id="dashboard-grid">
+                            <!-- 24 Slots (6x4 grid) - each can be icon or empty -->
+                            @for (slot of dashboardLayout; track $index; let i = $index) {
+                            @if (slot) {
+                            <!-- Icon Slot -->
+                            <div class="dashboard-icon-item" [attr.data-slot-index]="i" [attr.data-icon-id]="slot.id"
+                                draggable="true" (click)="openPanel(slot.panel || '')"
+                                (dragstart)="onSlotDragStart($event, i)" (dragend)="onSlotDragEnd($event)"
+                                (dragover)="onSlotDragOver($event, i)" (dragleave)="onSlotDragLeave($event)"
+                                (drop)="onSlotDrop($event, i)">
+                                <!-- Fav Icon with count badge -->
+                                @if (slot.id.startsWith('fav_')) {
+                                <div class="dashboard-icon dashboard-icon-fav">
+                                    <span class="material-symbols-sharp" style="color: gold;">star</span>
+                                    <span class="fav-count-badge">{{ getFavItemCount(slot.id) }}</span>
+                                </div>
+                                } @else {
+                                <!-- Regular Icon -->
+                                <div class="dashboard-icon" [ngClass]="'dashboard-icon-' + slot.id">
+                                    <span class="material-symbols-sharp">{{ slot.icon }}</span>
+                                </div>
+                                }
+                                <span class="dashboard-icon-text">{{ slot.label }}</span>
+                            </div>
+                            } @else {
+                            <!-- Empty Slot -->
+                            <div class="dashboard-empty-cell" [attr.data-slot-index]="i"
+                                (dragover)="onSlotDragOver($event, i)" (dragleave)="onSlotDragLeave($event)"
+                                (drop)="onSlotDrop($event, i)">
+                            </div>
+                            }
+                            }
+                            <!-- Add Button (overlay at bottom-left) -->
+                            <div class="dashboard-icon-item dashboard-fixed-icon" (click)="addNewTab()">
+                                <div class="dashboard-icon dashboard-icon-add">
+                                    <span class="material-symbols-sharp">add</span>
+                                </div>
+                                <span class="dashboard-icon-text">Add</span>
+                            </div>
+                            <!-- Trash (grid position row 4, col 6) -->
+                            <div class="dashboard-icon-item dashboard-fixed-icon trash-zone"
+                                [class.drag-over]="dragOverTrash" (dragover)="onTrashDragOver($event)"
+                                (dragleave)="onTrashDragLeave($event)" (drop)="onTrashDrop($event)">
+                                <div class="dashboard-icon dashboard-trash-bin">
+                                    <span class="material-symbols-sharp">delete</span>
+                                </div>
+                                <span class="dashboard-icon-text">Trash</span>
+                            </div>
+                        </div>
+                        }
+
+                        <!-- ============= GROUP TALK VIEW ============= -->
+                        @if (isPanelActive('grouptalk')) {
+                        <div class="grouptalk-container p-4" style="color: white;">
+                            <div class="fav-header mb-4">
+                                <div class="fav-view-header">
+                                    <div class="fav-title">
+                                        <span class="material-symbols-sharp" style="margin-right: 10px;">groups</span>
+                                        <span>GROUP TALK CONFIG</span>
+                                    </div>
+                                    <div class="fav-actions">
+                                        <div class="fav-btn fav-btn-close" (click)="switchTab('dashboard')">
+                                            CLOSE
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-3 h-100">
+                                @for (group of groups; track group.id) {
+                                <div class="config-table slot-{{group.id}} flex-grow-1 d-flex flex-column"
+                                    (dragover)="onGroupBtnDragOver($event, group)"
+                                    (drop)="onGroupTableDrop($event, group)">
+                                    <div class="config-header p-2 text-center fw-bold"
+                                        style="background: #2a2a2a; border-bottom: 2px solid #444;">{{ group.name }}
+                                    </div>
+                                    <div class="config-grid p-2"
+                                        style="display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(8, 1fr); gap: 5px; background: #1a1a1a; flex-grow: 1; height: 100%;">
+                                        @for (channel of channels; track channel.key) {
+                                        <div class="config-cell config-cell-grouptalk p-2 d-flex align-items-center justify-content-center"
+                                            [class.active]="channel.groups.includes(group.id)"
+                                            [style.background]="channel.groups.includes(group.id) ? '#2a2a2a' : '#222'"
+                                            [style.border]="channel.groups.includes(group.id) ? '2px solid var(--color-accent-green)' : '1px solid #444'"
+                                            [style.opacity]="channel.groups.includes(group.id) ? '1' : '0.6'"
+                                            (click)="toggleGroupMembership(channel, group.id)">
+
+                                            <div class="d-flex flex-column align-items-center">
+                                                <span class="fw-bold"
+                                                    [style.color]="channel.groups.includes(group.id) ? '#fff' : '#666'"
+                                                    [style.font-size]="channel.groups.includes(group.id) ? '1.1rem' : '0.9rem'">
+                                                    CH {{ channel.position }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        }
+                                    </div>
+                                </div>
+                                }
+                            </div>
+                        </div>
+                        }
+
+                        <!-- ============= AUDIO SETTINGS VIEW ============= -->
+                        @if (isPanelActive('audio')) {
+                        <div class="audio-container p-4" style="color: white;">
+                            <div class="fav-header mb-4">
+                                <div class="fav-view-header">
+                                    <div class="fav-title">
+                                        <span class="material-symbols-sharp"
+                                            style="margin-right: 10px;">graphic_eq</span>
+                                        <span>AUDIO SETTINGS</span>
+                                    </div>
+                                    <div class="fav-actions">
+                                        <div class="fav-btn fav-btn-close" (click)="switchTab('dashboard')">
+                                            CLOSE
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex flex-column h-100 pb-4">
+                                <div class="config-table d-flex flex-column flex-grow-1"
+                                    style="background: #111; border: 1px solid #333; border-radius: 6px; overflow: hidden;">
+                                    <div class="config-header p-2 text-center fw-bold"
+                                        style="background: #222; border-bottom: 1px solid #333; color: #aaa; letter-spacing: 1px;">
+                                        CHANNEL MIXER
+                                    </div>
+                                    <div class="audio-grid p-3"
+                                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); grid-auto-rows: max-content; gap: 8px; overflow-y: auto; flex-grow: 1;">
+                                        @for (channel of channels; track channel.key) {
+                                        <div class="audio-cell p-2"
+                                            [style.background]="channel.isActive ? '#1a1a1a' : '#0a0a0a'"
+                                            [style.opacity]="channel.isActive ? '1' : '0.4'"
+                                            [style.cursor]="channel.isActive ? 'ns-resize' : 'not-allowed'"
+                                            style="border-radius: 6px; border: 1px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100px;"
+                                            (touchstart)="channel.isActive && onVolumeTouchStart($event, channel)"
+                                            (touchmove)="channel.isActive && onVolumeTouchMove($event, channel)"
+                                            (touchend)="channel.isActive && onVolumeTouchEnd($event, channel)"
+                                            (mousedown)="channel.isActive && onVolumeMouseDown($event, channel)">
+                                            <span [style.color]="channel.isActive ? '#fff' : '#666'"
+                                                class="fw-bold mb-2" style="font-size: 11px;">CH {{
+                                                channel.position
+                                                }}</span>
+                                            <!-- Volume Bar -->
+                                            <div class="volume-bar-container"
+                                                [style.background]="channel.isActive ? '#333' : '#222'"
+                                                style="width: 12px; height: 60px; border-radius: 10px; position: relative; overflow: hidden;">
+                                                <div class="volume-bar-fill"
+                                                    [style.height.%]="channel.isActive ? getChannelVolume(channel.key) : 0"
+                                                    [style.background]="channel.isActive ? 'linear-gradient(to top, #00ff66, #66ff99)' : '#444'"
+                                                    style="position: absolute; bottom: 0; left: 0; right: 0; transition: height 0.1s;">
+                                                </div>
+                                            </div>
+                                            <span [style.color]="channel.isActive ? '#aaa' : '#666'"
+                                                style="font-size: 10px; margin-top: 6px; font-family: monospace;">{{
+                                                channel.isActive ?
+                                                getChannelVolume(channel.key) + '%' : '--' }}</span>
+                                        </div>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="mt-3 text-center" style="color: #666; font-size: 12px;">
+                                    <span class="material-symbols-sharp"
+                                        style="font-size: 14px; vertical-align: middle; margin-right: 4px;">touch_app</span>
+                                    Touch & drag sliders to adjust volume
+                                </div>
+                            </div>
+                        </div>
+                        }
+
+                        <!-- ============= AUDIO REC VIEW (Assigned Recordings) ============= -->
+                        @if (isPanelActive('audiorec')) {
+                        <div class="audiorec-container p-4" style="color: white;">
+                            <div class="fav-header mb-4">
+                                <div class="fav-view-header">
+                                    <div class="fav-title">
+                                        <span class="material-symbols-sharp"
+                                            style="margin-right: 10px;">play_circle</span>
+                                        <span>AUDIO RECORDINGS</span>
+                                    </div>
+                                    <div class="fav-actions">
+                                        <div class="fav-btn fav-btn-close" (click)="switchTab('dashboard')">
+                                            CLOSE
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Audio Recording Tables (GroupTalk style - 3 horizontal tables) -->
+                            <div class="d-flex gap-3 flex-grow-1" style="margin-bottom: 70px;">
+                                @for (rec of getActiveRecordings(); track rec.id) {
+                                <div class="config-table flex-grow-1 d-flex flex-column"
+                                    [style.borderTopColor]="getRecordingColor(rec.id)" style="border-top: 3px solid;">
+                                    <!-- Recording Header -->
+                                    <div class="config-header p-2 text-center fw-bold d-flex align-items-center justify-content-center gap-2"
+                                        style="background: #2a2a2a; border-bottom: 1px solid #444;">
+                                        <span class="material-symbols-sharp" [style.color]="getRecordingColor(rec.id)"
+                                            style="font-size: 20px;">play_arrow</span>
+                                        <span [style.color]="getRecordingColor(rec.id)">{{ rec.name }}</span>
+                                    </div>
+                                    <!-- Channels Grid (2x8 like GroupTalk) -->
+                                    <div class="config-grid p-2"
+                                        style="display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(8, 1fr); gap: 5px; background: #1a1a1a; flex-grow: 1;">
+                                        @for (channel of channels; track channel.key) {
+                                        <div class="config-cell p-2 d-flex align-items-center justify-content-between"
+                                            [class.active]="hasRecording(channel, rec.id)"
+                                            [style.background]="hasRecording(channel, rec.id) ? '#2a2a2a' : '#222'"
+                                            [style.border]="hasRecording(channel, rec.id) ? '2px solid ' + getRecordingColor(rec.id) : '1px solid #444'"
+                                            [style.opacity]="hasRecording(channel, rec.id) ? '1' : '0.4'">
+                                            <span class="fw-bold"
+                                                [style.color]="hasRecording(channel, rec.id) ? '#fff' : '#555'"
+                                                style="font-size: 0.85rem;">
+                                                CH {{ channel.position }}
+                                            </span>
+                                            <!-- Delete button (only if this channel has this recording) -->
+                                            @if (hasRecording(channel, rec.id)) {
+                                            <span class="material-symbols-sharp"
+                                                style="font-size: 16px; color: #ff6b6b; cursor: pointer;"
+                                                (click)="removeRecordingFromChannel(channel.key, rec.id); $event.stopPropagation()"
+                                                title="Remove from this channel">
+                                                close
+                                            </span>
+                                            }
+                                        </div>
+                                        }
+                                    </div>
+                                </div>
+                                }
+                                @if (getActiveRecordings().length === 0) {
+                                <div
+                                    class="text-center text-muted py-5 flex-grow-1 d-flex align-items-center justify-content-center">
+                                    No recordings assigned. Drag recordings from drawer to channels.
+                                </div>
+                                }
+                            </div>
+
+                            <!-- Play/Stop Button (bottom center) -->
+                            <div class="audiorec-controls"
+                                style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+                                @if (!isPlayingLoop) {
+                                <button class="btn btn-success btn-lg d-flex align-items-center gap-2"
+                                    (click)="startPlayLoop()" [disabled]="getActiveRecordings().length === 0">
+                                    <span class="material-symbols-sharp" style="font-size: 28px;">play_arrow</span>
+                                    <span>PLAY ALL</span>
+                                </button>
+                                } @else {
+                                <button class="btn btn-danger btn-lg d-flex align-items-center gap-2"
+                                    (click)="stopPlayLoop()">
+                                    <span class="material-symbols-sharp" style="font-size: 28px;">stop</span>
+                                    <span>STOP</span>
+                                </button>
+                                }
+                            </div>
+                        </div>
+                        }
+                        <!-- ============= INFO PANEL VIEW ============= -->
+                        @if (isPanelActive('info')) {
+                        <div class="info-container p-4" style="color: white; height: 100%; overflow-y: auto;">
+                            <div class="fav-header mb-4">
+                                <div class="fav-view-header">
+                                    <div class="fav-title">
+                                        <span class="material-symbols-sharp" style="margin-right: 10px;">info</span>
+                                        <span>INFORMATION</span>
+                                    </div>
+                                    <div class="fav-actions">
+                                        <div class="fav-btn fav-btn-close" (click)="switchTab('dashboard')">
+                                            CLOSE
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4" style="color:#aaa; max-width: 800px; margin: 0 auto;">
+                                <h3 style="color:white; margin-bottom:15px; display: flex; align-items: center;">
+                                    <span class="material-symbols-sharp"
+                                        style="margin-right:10px; color:var(--color-accent-green);">account_circle</span>
+                                    Account Information
+                                </h3>
+                                <div
+                                    style="background:#1a1a1a; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:30px;">
+                                    <p style="margin-bottom:8px;"><strong style="color:#fff;">Name:</strong> {{
+                                        loginUsername || 'Guest' }}</p>
+                                    <p style="margin-bottom:8px;"><strong style="color:#fff;">Username:</strong> {{
+                                        loginUsername || 'Unknown' }}</p>
+                                    <p style="margin-bottom:0;"><strong style="color:#fff;">Extension:</strong> {{
+                                        currentExtension || 'None' }}</p>
+                                </div>
+
+                                <h3 style="color:white; margin-bottom:15px; display: flex; align-items: center;">
+                                    <span class="material-symbols-sharp" style="margin-right:10px;">dvr</span>
+                                    System Information
+                                </h3>
+                                <hr style="border-color:#333;">
+                                <p><strong>System Version:</strong> v01.02-22:00 [f9a6171]</p>
+                                <p><strong>License ID:</strong> 884-221-990</p>
+                                <p><strong>Last Update:</strong> 02 Jan 2026</p>
+                            </div>
+                        </div>
+                        }
+
+                        <!-- ============= FAVOURITE TAB VIEW ============= -->
+                        @if (isPanelActive('fav') && activeTab) {
+                        <div class="favourite-container p-4">
+                            <!-- Header Actions -->
+                            <div class="fav-header">
+                                <!-- VIEW MODE Header -->
+                                @if (!activeTab.isEditMode) {
+                                <div class="fav-view-header">
+                                    <div class="fav-title">
+                                        <span class="material-symbols-sharp"
+                                            style="color: gold; margin-right: 10px;">star</span>
+                                        <span>{{ activeTab.title }}</span>
+                                    </div>
+                                    <div class="fav-actions">
+                                        <div class="fav-btn fav-btn-close" (click)="closeTab(activeTab.id, $event)">
+                                            CLOSE TAB
+                                        </div>
+                                        <div class="fav-btn fav-btn-edit" (click)="enableFavEditMode(activeTab.id)">
+                                            <span class="material-symbols-sharp">edit</span> EDIT
+                                        </div>
+                                    </div>
+                                </div>
+                                }
+
+                                <!-- EDIT MODE Header -->
+                                @if (activeTab.isEditMode) {
+                                <div class="fav-edit-header">
+                                    <div class="fav-edit-input-area">
+                                        <span class="material-symbols-sharp" style="color: #ff4d4d;">edit</span>
+                                        <input type="text" #favInput [(ngModel)]="favRenameInput"
+                                            class="fav-rename-input" placeholder="Enter Tab Name"
+                                            (keydown.enter)="saveFavEdit(activeTab.id)" (click)="showKeyboard(favInput)"
+                                            (focus)="showKeyboard(favInput)" (touchstart)="showKeyboard(favInput)">
+                                    </div>
+                                    <div class="fav-actions">
+                                        <div class="fav-btn fav-btn-cancel" (click)="cancelFavEdit(activeTab.id)">
+                                            CANCEL
+                                        </div>
+                                        <div class="fav-btn fav-btn-save" (click)="saveFavEdit(activeTab.id)">
+                                            <span class="material-symbols-sharp">save</span> SAVE
+                                        </div>
+                                    </div>
+                                </div>
+                                }
+                            </div>
+
+                            <!-- Favourite 24-Slot Grid -->
+                            <div class="favourite-grid" [class.editing]="activeTab.isEditMode">
+                                @for (slot of activeTab.items; track $index; let i = $index) {
+                                @if (slot) {
+                                <!-- Filled Slot -->
+                                <div class="favourite-item" [attr.data-index]="i" draggable="true"
+                                    (dragstart)="onFavItemDragStart($event, i)"
+                                    (dragover)="onFavItemDragOver($event, i)" (dragleave)="onSlotDragLeave($event)"
+                                    (drop)="onFavItemDrop($event, i)">
+                                    <div class="fav-item-icon">
+                                        <span class="material-symbols-sharp">{{ slot.icon }}</span>
+                                    </div>
+                                    <span class="fav-item-label">{{ slot.label }}</span>
+                                </div>
+                                } @else {
+                                <!-- Empty Slot -->
+                                <div class="favourite-item empty-slot" [attr.data-index]="i"
+                                    (dragover)="onFavouriteSlotDragOver($event, i)"
+                                    (dragleave)="onSlotDragLeave($event)" (drop)="onFavouriteSlotDrop($event, i)">
+                                </div>
+                                }
+                                }
+                            </div>
+
+                            <!-- Trash Bin (visible in edit mode) -->
+                            @if (activeTab.isEditMode) {
+                            <div class="fav-trash-bin" [class.drag-over]="dragOverTrash"
+                                (dragover)="onTrashDragOver($event)" (dragleave)="onTrashDragLeave($event)"
+                                (drop)="onTrashDrop($event)">
+                                <span class="material-symbols-sharp">delete</span>
+                            </div>
+                            }
+                        </div>
+                        }
+
+                    </div>
+
+                    <!-- Tab Bar -->
+                    <div class="content-tabs-bar">
+                        @for (tab of tabs; track tab.id) {
+                        <div class="content-tab" [class.active]="activeTabId === tab.id" (click)="switchTab(tab.id)"
+                            (dblclick)="renameTab(tab.id)">
+                            {{ tab.title }}
+                            @if (tab.isClosable) {
+                            <span class="tab-close-btn" (click)="closeTab(tab.id, $event)">×</span>
+                            }
+                        </div>
+                        }
+                        <div class="content-tab add-tab-btn" (click)="addNewTab()">
+                            <span class="material-symbols-sharp" style="font-size: 18px;">add</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- FAB CALL BUTTON -->
+<div id="fabCall" class="floating-call-btn" (click)="openDialpad()">
+    <span class="material-symbols-sharp">call</span>
+</div>
+
+<!-- FOOTER -->
+<footer class="status-footer">
+    <div class="status-left">
+        <span class="status-indicator"></span>
+        <span class="status-text">SYSTEM STATUS: <span style="color: var(--color-accent-green);">{{ systemStatus
+                }}</span></span>
+        <span class="status-divider">|</span>
+        <span class="status-text">CONNECTION: <span style="color: var(--color-accent-green);">{{ currentExtension ? 'EXT
+                ' + currentExtension + ' ' + connectionStatus : connectionStatus
+                }}</span></span>
+    </div>
+    <div class="status-right">
+        <span class="status-text">TRADER ID: {{ traderId }}</span>
+        <span class="status-divider">|</span>
+        <span class="status-text">&copy; 2025 SmartTX SYSTEM</span>
+    </div>
+</footer>
+
+<!-- ============================================ -->
+<!-- DRAWERS (Bootstrap Offcanvas) -->
+<!-- ============================================ -->
+
+<!-- SETTINGS DRAWER (Red) -->
+<div class="offcanvas offcanvas-end section-red-drawer" tabindex="-1" id="toolsDrawer">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" style="color: var(--color-accent-red);">
+            <span class="material-symbols-sharp">settings</span> SETTINGS
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="drawer-menu-item" data-bs-toggle="offcanvas" data-bs-target="#audioSettingsDrawer">Audio</div>
+
+        <div class="drawer-menu-item" (click)="toggleSubmenu('lines')">
+            <span>Line</span>
+            <span class="material-symbols-sharp">expand_more</span>
+        </div>
+        <div id="submenu-lines" class="drawer-submenu" [class.show]="submenuOpen === 'lines'">
+            <div class="sub-item" data-bs-toggle="offcanvas" data-bs-target="#lineListDrawer">Line</div>
+            <div class="sub-item" data-bs-toggle="offcanvas" data-bs-target="#vpwListDrawer">VPW</div>
+            <div class="sub-item" data-bs-toggle="offcanvas" data-bs-target="#casListDrawer">CAS</div>
+            <div class="sub-item" data-bs-toggle="offcanvas" data-bs-target="#extensionDrawer">Extension</div>
+        </div>
+
+        <div class="drawer-menu-item" data-bs-toggle="offcanvas" data-bs-target="#intercomDrawer">Intercom</div>
+        <div class="drawer-menu-item" data-bs-toggle="offcanvas" data-bs-target="#phonebookDrawer">PhoneBook</div>
+        <div class="drawer-menu-item" (click)="openTab('grouptalk')" data-bs-dismiss="offcanvas">Group Talk</div>
+        <div class="drawer-menu-item" data-bs-toggle="offcanvas" data-bs-target="#audioRecordingsDrawer">Audio Recording
+        </div>
+        <div class="drawer-menu-item" data-bs-toggle="offcanvas" data-bs-target="#callRecordingsDrawer">Call Recording
+        </div>
+        <div class="drawer-menu-item" (click)="openTab('info')" data-bs-dismiss="offcanvas">Information</div>
+        <div class="drawer-menu-item" style="color: #ff4d4d; cursor: pointer;" (click)="signOut()">
+            <span class="material-symbols-sharp" style="vertical-align: middle; margin-right: 10px;">logout</span>
+            Sign Out
+        </div>
+    </div>
+</div>
+
+<!-- LINE DRAWER (Green) -->
+<div class="offcanvas offcanvas-end section-green-drawer" tabindex="-1" id="lineListDrawer" data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-green);">LINE</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+        <ul class="recording-list" id="lineListContainer">
+            @for (line of lines; track line.id) {
+            <li class="rec-item" draggable="true"
+                (dragstart)="handleLineVPWCASDragStart($event, line.name, 'line', line.use_ext)"
+                (touchstart)="handleDrawerTouchStart($event, line.name, 'line', line.use_ext)"
+                (touchmove)="handleDrawerTouchMove($event)" (touchend)="handleDrawerTouchEnd($event)">
+                <div class="rec-info">
+                    <span class="material-symbols-sharp"
+                        style="font-size: 24px; margin-right: 15px; color: #666; opacity: 0.5;">settings_phone</span>
+                    <div class="rec-text">
+                        <span class="rec-filename">{{ line.name }}</span>
+                        <span class="rec-meta"></span>
+                    </div>
+                </div>
+            </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<!-- VPW DRAWER (Red) -->
+<div class="offcanvas offcanvas-end section-red-drawer" tabindex="-1" id="vpwListDrawer" data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-red);">VPW</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+        <ul class="recording-list" id="vpwListContainer">
+            @for (vpw of vpwList; track vpw.id) {
+            <li class="rec-item" draggable="true"
+                (dragstart)="handleLineVPWCASDragStart($event, vpw.name, 'vpw', vpw.use_ext)"
+                (touchstart)="handleDrawerTouchStart($event, vpw.name, 'vpw', vpw.use_ext)"
+                (touchmove)="handleDrawerTouchMove($event)" (touchend)="handleDrawerTouchEnd($event)">
+                <div class="rec-info">
+                    <span class="material-symbols-sharp"
+                        style="font-size: 24px; margin-right: 15px; color: var(--color-accent-red);">private_connectivity</span>
+                    <div class="rec-text">
+                        <span class="rec-filename">{{ vpw.name }}</span>
+                    </div>
+                </div>
+            </li>
+            }
+        </ul>
+    </div>
+</div>
+
+<!-- CAS DRAWER (Blue) -->
+<div class="offcanvas offcanvas-end section-blue-drawer" tabindex="-1" id="casListDrawer" data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-blue);">CAS / HOOT</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+        <ul class="recording-list" id="casListContainer">
+            @for (cas of casList; track cas.id) {
+            <li class="rec-item" draggable="true"
+                (dragstart)="handleLineVPWCASDragStart($event, cas.name, 'cas', cas.use_ext)"
+                (touchstart)="handleDrawerTouchStart($event, cas.name, 'cas', cas.use_ext)"
+                (touchmove)="handleDrawerTouchMove($event)" (touchend)="handleDrawerTouchEnd($event)">
+                <div class="rec-info">
+                    <span class="material-symbols-sharp"
+                        style="font-size: 24px; margin-right: 15px; color: #666; opacity: 0.5;">campaign</span>
+                    <div class="rec-text">
+                        <span class="rec-filename">{{ cas.name }}</span>
+                    </div>
+                </div>
+            </li>
+            }
+        </ul>
+    </div>
+</div>
+
+
+<!-- EXTENSION DRAWER (Green) -->
+<div class="offcanvas offcanvas-end section-green-drawer" tabindex="-1" id="extensionDrawer" data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-green);">EXTENSION</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+        <div class="extension-list" style="flex: 1; overflow-y: auto;">
+            @for (ext of extensions; track ext.number) {
+            <div class="extension-item"
+                style="padding: 12px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span class="material-symbols-sharp"
+                        [style.color]="ext.online ? 'var(--color-accent-green)' : '#888'">
+                        {{ ext.online ? 'phone_enabled' : 'phone_disabled' }}
+                    </span>
+                    <span>Extension {{ ext.number }}</span>
+                </div>
+                <span [style.color]="ext.online ? '#00ff66' : '#888'" style="font-size: 12px;">
+                    {{ ext.online ? 'Online' : 'Offline' }}
+                </span>
+            </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- INTERCOM DRAWER (Green) -->
+<div class="offcanvas offcanvas-end section-green-drawer" tabindex="-1" id="intercomDrawer" data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-green);">INTERCOM</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0 d-flex flex-column">
+        <div class="intercom-my-section"
+            style="padding: 15px; background: rgba(0, 255, 102, 0.1); border-bottom: 1px solid #333;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="material-symbols-sharp"
+                    style="font-size: 32px; color: var(--color-accent-green);">person</span>
+                <div>
+                    <div style="font-weight: bold; color: #fff;">My Intercom</div>
+                    <div style="font-size: 12px; color: #aaa;">Extension: 3000</div>
+                </div>
+            </div>
+        </div>
+        <div class="intercom-list" style="flex: 1; overflow-y: auto; padding: 10px;">
+            @for (contact of intercomContacts; track contact.name) {
+            <div class="intercom-item"
+                style="padding: 12px; border-bottom: 1px solid #333; display: flex; align-items: center; gap: 10px; cursor: pointer;"
+                (click)="callIntercom(contact)">
+                <span class="material-symbols-sharp" style="color: var(--color-accent-green);">deskphone</span>
+                <span>{{ contact.name }}</span>
+            </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- PHONEBOOK DRAWER (Green) -->
+<div class="offcanvas offcanvas-end section-green-drawer" tabindex="-1" id="phonebookDrawer" data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-green);">PHONEBOOK</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body p-0 d-flex flex-column">
+        <div class="phonebook-header">
+            <div class="phonebook-controls">
+                <div class="phonebook-search">
+                    <input #phoneSearchInput type="text" class="search-input" placeholder="search"
+                        [(ngModel)]="phoneSearchQuery" (ngModelChange)="filterPhonebook()"
+                        (focus)="showKeyboard(phoneSearchInput)" (click)="showKeyboard(phoneSearchInput)">
+                    <span class="material-symbols-sharp" style="color: #fff;">search</span>
+                </div>
+            </div>
+        </div>
+        <div class="phonebook-body">
+            <div class="alphabet-sidebar" id="alphaSidebar">
+                @for (letter of alphabet; track letter) {
+                <div class="alpha-letter" (click)="scrollToLetter(letter, $event)">{{ letter }}</div>
+                }
+            </div>
+            <div class="actual-contact-list" id="contact-list-scroll">
+                @for (contact of filteredContacts; track contact.id) {
+                <div class="contact-card">
+                    <div class="contact-card-header" (click)="toggleContactExpand(contact)">
+                        <span class="contact-name-text">{{ contact.name }}</span>
+                        <span class="material-symbols-sharp contact-expand-icon"
+                            [style.transform]="contact.expanded ? 'rotate(180deg)' : 'rotate(0)'">expand_more</span>
+                    </div>
+                    <div class="contact-body-details" [class.show]="contact.expanded">
+                        <div class="phone-grid">
+                            @for (phone of contact.phones; track phone) {
+                            <div class="phone-cell" draggable="true"
+                                (dragstart)="handlePhoneDragStart($event, phone, contact.name)"
+                                (touchstart)="handlePhoneTouchStart($event, phone, contact.name)"
+                                (touchmove)="handlePhoneTouchMove($event)" (touchend)="handlePhoneTouchEnd($event)"
+                                (click)="dialPhone(phone)">
+                                <span class="material-symbols-sharp"
+                                    style="font-size: 16px; color: var(--color-accent-green);">call</span>
+                                {{ phone }}
+                            </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DIALPAD DRAWER (Green) -->
+<div class="offcanvas offcanvas-end section-dialpad-drawer" tabindex="-1" id="dialpadDrawer" data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" style="color: var(--color-accent-green);">
+            <span class="material-symbols-sharp">dialpad</span> DIALPAD
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
+            (click)="hangupDialpad()"></button>
+    </div>
+    <div class="offcanvas-body">
+        <div class="dialpad-container">
+            <div class="dialpad-display-area" id="dialDisplay" draggable="true"
+                (dragstart)="handleDialDragStart($event)" [class.connected]="dialpadConnected"
+                (touchstart)="handleDialTouchStart($event)" (touchmove)="handleDialTouchMove($event)"
+                (touchend)="handleDialTouchEnd($event)" [style.color]="dialpadConnected ? '#00ff66' : 'inherit'"
+                [style.borderColor]="dialpadConnected ? '#00ff66' : 'inherit'">
+                {{ dialpadCallerName || dialpadNumber }}
+            </div>
+
+            <div class="dialpad-grid" id="dialpadGrid" *ngIf="!dialpadConnected">
+                <div class="dial-key" (click)="dialNum('1')">1</div>
+                <div class="dial-key" (click)="dialNum('2')">2<span>ABC</span></div>
+                <div class="dial-key" (click)="dialNum('3')">3<span>DEF</span></div>
+                <div class="dial-key" (click)="dialNum('4')">4<span>GHI</span></div>
+                <div class="dial-key" (click)="dialNum('5')">5<span>JKL</span></div>
+                <div class="dial-key" (click)="dialNum('6')">6<span>MNO</span></div>
+                <div class="dial-key" (click)="dialNum('7')">7<span>PQRS</span></div>
+                <div class="dial-key" (click)="dialNum('8')">8<span>TUV</span></div>
+                <div class="dial-key" (click)="dialNum('9')">9<span>WXYZ</span></div>
+                <div class="dial-key" (click)="dialNum('*')">*</div>
+                <div class="dial-key" (click)="dialNum('0')">0<span>+</span></div>
+                <div class="dial-key" (click)="dialNum('#')">#</div>
+            </div>
+
+            <div class="dialpad-actions" id="btnDialCall" *ngIf="!dialpadConnected">
+                <div class="dial-action-btn btn-call-accept" (click)="dialFromPad()">
+                    <span class="material-symbols-sharp">call</span>
+                </div>
+                <div class="dial-action-btn btn-call-reject" (click)="deleteLastDigit()">
+                    <span class="material-symbols-sharp">backspace</span>
+                </div>
+            </div>
+
+            <div id="dialpadPTTArea" *ngIf="dialpadConnected"
+                style="display: flex; flex-direction:column; align-items:center; gap:20px; margin-top:20px;">
+                <button class="btn-dialpad-hangup" (click)="hangupDialpad()" title="End Call">
+                    <span class="material-symbols-sharp">call_end</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AUDIO RECORDINGS DRAWER (Blue) - SmartX Style -->
+<div class="offcanvas offcanvas-end section-blue-drawer" tabindex="-1" id="audioRecordingsDrawer"
+    data-bs-backdrop="false" data-bs-scroll="true">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-blue);">AUDIO RECORDING</h5>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-primary create-recording-btn"
+            (click)="showRecordingPanel = true"
+            style="border-color: var(--color-accent-blue); color: var(--color-accent-blue);">CREATE</button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column" style="position: relative;">
+        <!-- Recording List -->
+        <div class="recording-list-container flex-grow-1" style="overflow-y: auto;">
+            <ul class="recording-list" id="audioRecordingList" style="list-style: none; padding: 0; margin: 0;">
+                @for (rec of recordings; track rec.id) {
+                <li class="rec-item d-flex align-items-center justify-content-between" draggable="true"
+                    (dragstart)="onRecordingDragStart($event, rec)"
+                    style="padding: 12px; border-bottom: 1px solid #333; background: #1a1a1a; cursor: grab;">
+                    <!-- Normal display mode -->
+                    @if (editingRecording?.id !== rec.id) {
+                    <div class="rec-info d-flex align-items-center flex-grow-1">
+                        <span class="material-symbols-sharp" [style.color]="getRecordingColor(rec.id)"
+                            style="font-size: 24px; margin-right: 12px; transition: color 0.3s;">play_arrow</span>
+                        <div class="rec-text d-flex flex-column">
+                            <span class="rec-filename" style="color: #fff; font-size: 0.95rem;">{{ rec.name }}</span>
+                            <span class="rec-meta" style="color: #666; font-size: 0.75rem;">{{ rec.duration }} | {{
+                                rec.date }}</span>
+                        </div>
+                    </div>
+                    <div class="rec-actions d-flex gap-1">
+                        <div class="rec-btn" (click)="playRecording(rec.id); $event.stopPropagation()"
+                            style="cursor: pointer; padding: 5px;"
+                            [title]="playingRecordingId === rec.id ? 'Stop' : 'Play'">
+                            <span class="material-symbols-sharp"
+                                [style.color]="playingRecordingId === rec.id ? '#ff4d4d' : '#4CAF50'"
+                                style="font-size: 18px;">{{ playingRecordingId === rec.id ? 'stop' : 'play_arrow'
+                                }}</span>
+                        </div>
+                        <div class="rec-btn" (click)="editRecordingName(rec); $event.stopPropagation()"
+                            style="cursor: pointer; padding: 5px;" title="Edit">
+                            <span class="material-symbols-sharp" style="font-size: 18px; color: #888;">edit</span>
+                        </div>
+                        <div class="rec-btn" (click)="deleteRecording(rec.id); $event.stopPropagation()"
+                            style="cursor: pointer; padding: 5px;" title="Delete">
+                            <span class="material-symbols-sharp" style="font-size: 18px; color: #ff4d4d;">delete</span>
+                        </div>
+                    </div>
+                    } @else {
+                    <!-- Edit mode -->
+                    <div class="d-flex align-items-center flex-grow-1 gap-2">
+                        <input type="text" id="editRecordingNameInput" [(ngModel)]="currentRecordingName"
+                            class="form-control flex-grow-1" (focus)="showVirtualKeyboard()"
+                            (keydown.enter)="saveEditedRecordingName(); $event.preventDefault()"
+                            style="background: #222; color: white; border: 1px solid var(--color-accent-blue);">
+                        <button class="btn btn-sm btn-success"
+                            (click)="saveEditedRecordingName(); $event.stopPropagation()">
+                            <span class="material-symbols-sharp" style="font-size: 16px;">check</span>
+                        </button>
+                        <button class="btn btn-sm btn-secondary"
+                            (click)="cancelEditRecordingName(); $event.stopPropagation()">
+                            <span class="material-symbols-sharp" style="font-size: 16px;">close</span>
+                        </button>
+                    </div>
+                    }
+                </li>
+                }
+                @if (recordings.length === 0) {
+                <li class="text-center text-muted py-4">No recordings yet. Click CREATE to start.</li>
+                }
+            </ul>
+        </div>
+
+        <!-- Recording Panel (Slide Up from Bottom) -->
+        <div class="recording-panel-fixed" [class.show]="showRecordingPanel"
+            style="position: absolute; bottom: 0; left: 0; right: 0; background: #1a1a1a; border-top: 2px solid var(--color-accent-blue); padding: 15px; border-radius: 8px 8px 0 0; z-index: 100;"
+            [style.transform]="showRecordingPanel ? 'translateY(0)' : 'translateY(100%)'">
+            <div class="recording-panel-header d-flex justify-content-between align-items-center mb-3">
+                <div class="rec-footer-title" style="color: #fff; font-weight: 500;">Create New Recording</div>
+                <button class="btn btn-sm btn-secondary" (click)="cancelRecording()">Cancel</button>
+            </div>
+
+            <!-- Voice Visualizer + Record Button -->
+            <div class="rec-control-row d-flex align-items-center justify-content-center gap-3 mb-3">
+                <div class="voice-visualizer d-flex gap-1 align-items-end" style="height: 40px;">
+                    <div class="wave-bar" [style.height]="isRecording ? '60%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                    <div class="wave-bar" [style.height]="isRecording ? '80%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                    <div class="wave-bar" [style.height]="isRecording ? '40%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                    <div class="wave-bar" [style.height]="isRecording ? '100%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                    <div class="wave-bar" [style.height]="isRecording ? '50%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                    <div class="wave-bar" [style.height]="isRecording ? '70%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                    <div class="wave-bar" [style.height]="isRecording ? '30%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                    <div class="wave-bar" [style.height]="isRecording ? '90%' : '20%'"
+                        style="width: 4px; background: var(--color-accent-blue); border-radius: 2px;"></div>
+                </div>
+                <div class="rec-record-btn" (click)="toggleRecording()"
+                    style="width: 60px; height: 60px; border-radius: 50%; border: 3px solid var(--color-accent-blue); display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                    [style.background]="isRecording ? '#ff4d4d' : '#333'">
+                    <span class="material-symbols-sharp" style="font-size: 28px; color: white;">{{ isRecording ? 'stop'
+                        : 'mic' }}</span>
+                </div>
+                <div class="rec-timer" style="font-size: 1.2rem; color: #fff; font-family: monospace; min-width: 60px;">
+                    {{ recordingTimer }}</div>
+            </div>
+
+            <!-- Save Controls (shown after stop) -->
+            @if (recordingComplete) {
+            <div class="rec-save-controls">
+                <input type="text" [(ngModel)]="currentRecordingName" class="form-control mb-2"
+                    placeholder="Enter recording name..."
+                    style="background: #222; color: white; border: 1px solid #444;">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success flex-grow-1" (click)="saveRecordingWithName()">
+                        <span class="material-symbols-sharp">save</span> Save
+                    </button>
+                    <button class="btn btn-outline-secondary" (click)="cancelRecording()">Cancel</button>
+                </div>
+            </div>
+            }
+        </div>
+
+        <div class="text-center mt-2" style="font-size: 11px; color: #666;">
+            Drag recording to channel to assign
+        </div>
+    </div>
+</div>
+
+<!-- CALL RECORDINGS DRAWER (Blue) -->
+<div class="offcanvas offcanvas-end section-blue-drawer" tabindex="-1" id="callRecordingsDrawer"
+    data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-blue);">CALL RECORDING</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+        <div class="recording-list-container">
+            <ul class="recording-list" id="callRecordingList">
+                @for (rec of callRecordings; track rec.id) {
+                <li class="recording-item">
+                    <span class="rec-name">{{ rec.name }}</span>
+                    <span class="rec-date">{{ rec.date }}</span>
+                </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- AUDIO SETTINGS DRAWER (Blue) -->
+<div class="offcanvas offcanvas-end section-blue-drawer" tabindex="-1" id="audioSettingsDrawer"
+    data-bs-backdrop="false">
+    <div class="offcanvas-header">
+        <div class="d-flex align-items-center">
+            <span class="material-symbols-sharp drawer-back-btn" data-bs-toggle="offcanvas"
+                data-bs-target="#toolsDrawer">arrow_back</span>
+            <h5 class="offcanvas-title" style="color: var(--color-accent-blue);">AUDIO SETTINGS</h5>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column p-3" style="gap: 15px; background: #000;">
+
+        <!-- Microphone Selection Card -->
+        <div class="audio-setting-card"
+            style="background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+            <label class="d-flex align-items-center mb-2"
+                style="color: var(--color-accent-blue); font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">
+                <span class="material-symbols-sharp me-2" style="font-size: 18px;">mic</span>
+                MICROPHONE
+            </label>
+            <select class="form-select bg-dark text-white border-secondary" [(ngModel)]="selectedInputDeviceId"
+                (change)="audioService.setInputDevice(selectedInputDeviceId)"
+                style="font-size: 0.9rem; padding: 10px; border-color: #444;">
+                <option value="default">Default Microphone</option>
+                @for (device of audioInputDevices; track device.deviceId) {
+                <option [value]="device.deviceId">{{ device.label }}</option>
+                }
+            </select>
+        </div>
+
+        <!-- Speaker Selection Card -->
+        <div class="audio-setting-card"
+            style="background: #1a1a1a; padding: 15px; border-radius: 8px; border: 1px solid #333;">
+            <label class="d-flex align-items-center mb-2"
+                style="color: var(--color-accent-blue); font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">
+                <span class="material-symbols-sharp me-2" style="font-size: 18px;">volume_up</span>
+                SPEAKER
+            </label>
+            <select class="form-select bg-dark text-white border-secondary" [(ngModel)]="selectedOutputDeviceId"
+                (change)="audioService.setOutputDevice(selectedOutputDeviceId)"
+                style="font-size: 0.9rem; padding: 10px; border-color: #444;">
+                <option value="default">Default Speaker</option>
+                @for (device of audioOutputDevices; track device.deviceId) {
+                <option [value]="device.deviceId">{{ device.label }}</option>
+                }
+            </select>
+        </div>
+
+        <!-- Refresh Button -->
+        <button class="btn w-100 py-3 mt-2"
+            style="background: rgba(4, 169, 245, 0.1); color: var(--color-accent-blue); border: 1px solid var(--color-accent-blue); font-weight: bold; border-radius: 8px; transition: all 0.2s;"
+            (click)="audioService.enumerateDevices()">
+            <span class="material-symbols-sharp" style="vertical-align: middle; margin-right: 8px;">refresh</span>
+            REFRESH DEVICES
+        </button>
+
+    </div>
+</div>
+
+<!-- VIRTUAL KEYBOARD -->
+<div class="virtual-keyboard" [class.active]="vkActive" [style.text-transform]="vkShift ? 'uppercase' : 'lowercase'"
+    id="virtualKeyboard">
+    <div class="kb-close-bar">
+        <span class="material-symbols-sharp kb-close-icon" (click)="hideKeyboard()">keyboard_hide</span>
+    </div>
+    <!-- Number Row -->
+    <div class="kb-row">
+        <div class="kb-key" (click)="typeKey(vkShift ? '!' : '1')">{{ vkShift ? '!' : '1' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '@' : '2')">{{ vkShift ? '@' : '2' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '#' : '3')">{{ vkShift ? '#' : '3' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '$' : '4')">{{ vkShift ? '$' : '4' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '%' : '5')">{{ vkShift ? '%' : '5' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '^' : '6')">{{ vkShift ? '^' : '6' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '&' : '7')">{{ vkShift ? '&' : '7' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '*' : '8')">{{ vkShift ? '*' : '8' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? '(' : '9')">{{ vkShift ? '(' : '9' }}</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? ')' : '0')">{{ vkShift ? ')' : '0' }}</div>
+    </div>
+    <div class="kb-row">
+        <div class="kb-key" (click)="typeKey(vkShift ? 'Q' : 'q')">q</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'W' : 'w')">w</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'E' : 'e')">e</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'R' : 'r')">r</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'T' : 't')">t</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'Y' : 'y')">y</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'U' : 'u')">u</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'I' : 'i')">i</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'O' : 'o')">o</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'P' : 'p')">p</div>
+    </div>
+    <div class="kb-row">
+        <div class="kb-key" (click)="typeKey(vkShift ? 'A' : 'a')">a</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'S' : 's')">s</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'D' : 'd')">d</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'F' : 'f')">f</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'G' : 'g')">g</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'H' : 'h')">h</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'J' : 'j')">j</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'K' : 'k')">k</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'L' : 'l')">l</div>
+    </div>
+    <div class="kb-row">
+        <div class="kb-key wide" [style.background]="vkShift ? '#0088ff' : '#555'" (click)="toggleVkShift()">⇧</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'Z' : 'z')">z</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'X' : 'x')">x</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'C' : 'c')">c</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'V' : 'v')">v</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'B' : 'b')">b</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'N' : 'n')">n</div>
+        <div class="kb-key" (click)="typeKey(vkShift ? 'M' : 'm')">m</div>
+        <div class="kb-key wide" (click)="backspace()"><span class="material-symbols-sharp">backspace</span></div>
+    </div>
+    <div class="kb-row">
+        <div class="kb-key" style="background:#444; font-size:11px;" (click)="toggleVkSymbols()">?123</div>
+        <div class="kb-key" (click)="typeKey('-')">-</div>
+        <div class="kb-key space" (click)="typeKey(' ')">SPACE</div>
+        <div class="kb-key" (click)="typeKey('.')">.</div>
+        <div class="kb-key wide" style="background:#0088ff;" (click)="vkDone()">DONE</div>
+    </div>
+    <!-- Symbols Panel -->
+    <div class="vk-symbols-panel" [style.display]="vkSymbols ? 'block' : 'none'">
+        <div class="kb-row">
+            <div class="kb-key" (click)="typeKey('!')">!</div>
+            <div class="kb-key" (click)="typeKey('@')">@</div>
+            <div class="kb-key" (click)="typeKey('#')">#</div>
+            <div class="kb-key" (click)="typeKey('$')">$</div>
+            <div class="kb-key" (click)="typeKey('%')">%</div>
+            <div class="kb-key" (click)="typeKey('^')">^</div>
+            <div class="kb-key" (click)="typeKey('&')">&amp;</div>
+            <div class="kb-key" (click)="typeKey('*')">*</div>
+            <div class="kb-key" (click)="typeKey('(')">(</div>
+            <div class="kb-key" (click)="typeKey(')')">)</div>
+        </div>
+        <div class="kb-row">
+            <div class="kb-key" (click)="typeKey('_')">_</div>
+            <div class="kb-key" (click)="typeKey('+')">+</div>
+            <div class="kb-key" (click)="typeKey('=')">=</div>
+            <div class="kb-key" (click)="typeKey('[')">[</div>
+            <div class="kb-key" (click)="typeKey(']')">]</div>
+            <div class="kb-key" (click)="typeKey('{')">&#123;</div>
+            <div class="kb-key" (click)="typeKey('}')">&#125;</div>
+            <div class="kb-key" (click)="typeKey('|')">|</div>
+            <div class="kb-key" (click)="typeKey('\\')">\</div>
+            <div class="kb-key" (click)="typeKey('/');">/</div>
+        </div>
+    </div>
+</div>
+
+<!-- DUPLICATE WARNING MODAL -->
+<div class="duplicate-modal-overlay" *ngIf="showDuplicateModal" (click)="showDuplicateModal = false">
+    <div class="duplicate-modal" (click)="$event.stopPropagation()">
+        <div class="duplicate-modal-icon">
+            <span class="material-symbols-sharp">warning</span>
+        </div>
+        <div class="duplicate-modal-title">Notice</div>
+        <div class="duplicate-modal-message">{{ duplicateModalMessage }}</div>
+        <button class="duplicate-modal-btn" (click)="showDuplicateModal = false">OK</button>
+    </div>
+</div>
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="duplicate-modal-overlay" *ngIf="showDeleteModal" (click)="showDeleteModal = false">
+    <div class="duplicate-modal" (click)="$event.stopPropagation()"
+        style="border-color: var(--color-accent-red); max-width: 280px;">
+        <div class="duplicate-modal-icon" style="color: var(--color-accent-red);">
+            <span class="material-symbols-sharp">delete</span>
+        </div>
+        <div class="duplicate-modal-title" style="color: var(--color-accent-red);">Confirm Delete</div>
+        <div class="duplicate-modal-message">Delete "{{ pendingDeleteRecording?.name }}"?</div>
+        <div class="d-flex gap-2 justify-content-center">
+            <button class="btn btn-secondary btn-sm" (click)="showDeleteModal = false">No</button>
+            <button class="btn btn-danger btn-sm" (click)="confirmDeleteRecording()">Yes, Delete</button>
+        </div>
+    </div>
+</div>

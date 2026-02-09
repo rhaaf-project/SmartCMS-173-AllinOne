@@ -1,0 +1,847 @@
+// TurretPage styles - supplements to smartx.css
+// IMPORTANT: Don't override grid-container here, smartx.css handles it
+
+:host {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    background: #000;
+    overflow: hidden;
+}
+
+// ============================================
+// CHANNEL GRID - Let smartx.css handle layout
+// Only fix height issues here
+// ============================================
+.channel-scroll-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden !important; // No scroll - fit all
+    min-height: 0;
+}
+
+.grid-container {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) !important; // 2 columns
+    grid-template-rows: repeat(8, 1fr) !important; // 8 rows = 16 cells full height
+    min-height: 0;
+}
+
+// ============================================
+// ACTION BAR BUTTONS - Fade when not hovered
+// ============================================
+.channel-action-btn {
+    .material-symbols-sharp {
+        color: #444; // Faded by default
+        transition: color 0.2s;
+    }
+
+    &:hover,
+    &.drag-over {
+        .material-symbols-sharp {
+            color: #ff4d4d !important; // Red on hover/ready
+        }
+    }
+
+    &.hangup-btn,
+    &.trash-btn {
+        .material-symbols-sharp {
+            color: #555; // Slightly visible by default
+        }
+
+        &:hover .material-symbols-sharp,
+        &.drag-over .material-symbols-sharp {
+            color: #ff4d4d !important;
+        }
+    }
+
+    &.drag-over {
+        background: rgba(255, 77, 77, 0.2);
+        outline: 2px dashed #ff4d4d;
+    }
+}
+
+// ============================================
+// DASHBOARD GRID - Matching SmartX
+// ============================================
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: repeat(4, auto);
+    gap: 0;
+    align-content: flex-start;
+    justify-items: center;
+    padding-top: 5%;
+}
+
+// Dashboard icon wrapper
+.dashboard-icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    cursor: grab;
+    transition: all 0.2s ease-in-out;
+    padding: 15px;
+    border-radius: 8px;
+
+    &:hover:not(.dashboard-trash-bin):not(.dragging) {
+        background-color: rgba(255, 77, 77, 0.1);
+        transform: scale(1.05);
+    }
+
+    &.dragging {
+        opacity: 0.5;
+        transform: scale(0.95);
+    }
+
+    &.drag-over {
+        background-color: rgba(0, 255, 102, 0.2);
+        border: 2px dashed #00ff66;
+        border-radius: 12px;
+    }
+}
+
+// The icon box itself
+.dashboard-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 40px;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background-color: transparent;
+    border: 3px solid #555;
+    color: #ccc;
+    position: relative;
+
+    .material-symbols-sharp {
+        font-size: 40px;
+    }
+}
+
+// Icon variants
+.dashboard-icon-whatsapp {
+    border-color: #25d366;
+    color: #25d366;
+    background: rgba(37, 211, 102, 0.1);
+}
+
+.dashboard-icon-teams {
+    border-color: #6264a7;
+    color: #6264a7;
+    background: rgba(98, 100, 167, 0.1);
+}
+
+.dashboard-icon-audiorec {
+    border-color: #888;
+    color: #888;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+// Favourite icons (dynamic, deletable)
+[class*="dashboard-icon-fav-"] {
+    border-color: #ff4d4d;
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.1);
+}
+
+.dashboard-icon-add {
+    border-color: #00ff66;
+    color: #00ff66;
+    background: rgba(0, 255, 102, 0.1);
+}
+
+.dashboard-trash-bin {
+    border-color: #ff4d4d;
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.1);
+}
+
+// Icon text
+.dashboard-icon-text {
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+}
+
+// Fixed icons (Add, Trash) at row 4
+.dashboard-fixed-icon {
+    grid-row: 4 !important;
+}
+
+.dashboard-grid>.dashboard-fixed-icon:nth-last-child(2) {
+    grid-column: 5 !important;
+}
+
+.dashboard-grid>.dashboard-fixed-icon:nth-last-child(1) {
+    grid-column: 6 !important;
+}
+
+// Empty cells
+.dashboard-empty-cell {
+    width: 80px;
+    height: 80px;
+    border: 2px dashed #333;
+    border-radius: 12px;
+    background-color: rgba(50, 50, 50, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: all 0.2s;
+    margin: 15px;
+
+    &.drag-over {
+        background-color: rgba(0, 255, 102, 0.2);
+        border-color: #00ff66;
+        opacity: 1;
+    }
+}
+
+// Trash zone highlight on drag
+.trash-zone.drag-over {
+
+    .dashboard-icon,
+    .dashboard-trash-bin {
+        background: rgba(255, 77, 77, 0.3) !important;
+        box-shadow: 0 0 20px rgba(255, 77, 77, 0.5);
+        transform: scale(1.1);
+    }
+}
+
+// ============================================
+// CHANNEL CELL DRAG STATES
+// ============================================
+.call-cell {
+    &.drag-over {
+        outline: 2px dashed #00ff66 !important;
+        outline-offset: -3px;
+        background: rgba(0, 255, 102, 0.1) !important;
+    }
+
+    &[draggable="true"] {
+        cursor: grab;
+
+        &:active {
+            cursor: grabbing;
+        }
+    }
+}
+
+// ============================================
+// FIX IONIC
+// ============================================
+ion-content {
+    --background: transparent;
+    --padding-start: 0;
+    --padding-end: 0;
+    --padding-top: 0;
+    --padding-bottom: 0;
+}
+
+// ============================================
+// FOOTER STATUS BAR
+// ============================================
+.status-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 24px;
+    background: #0a0a0a;
+    border-top: 1px solid #222;
+    padding: 0 15px;
+    font-size: 11px;
+    font-family: 'Poppins', sans-serif;
+    color: #888;
+    flex-shrink: 0;
+
+    .status-left,
+    .status-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--color-accent-green);
+        box-shadow: 0 0 6px var(--color-accent-green);
+    }
+
+    .status-text {
+        color: #aaa;
+    }
+
+    .status-divider {
+        color: #444;
+    }
+}
+
+// ============================================
+// VIRTUAL KEYBOARD
+// ============================================
+.virtual-keyboard {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #1a1a1a;
+    border-top: 2px solid var(--color-accent-green);
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    padding: 10px 5px 20px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 999999;
+
+    &.active {
+        transform: translateY(0);
+    }
+}
+
+.kb-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 5px;
+    width: 100%;
+    justify-content: center;
+}
+
+.kb-key {
+    flex: 1;
+    height: 45px;
+    background-color: #333;
+    border-radius: 4px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    user-select: none;
+    max-width: 40px;
+
+    &:active {
+        background-color: #555;
+    }
+
+    &.wide {
+        flex: 1.5;
+        max-width: 60px;
+        font-size: 0.9rem;
+        background-color: #444;
+    }
+
+    &.space {
+        flex: 4;
+        max-width: 200px;
+    }
+}
+
+.kb-close-bar {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.kb-close-icon {
+    color: #888;
+    cursor: pointer;
+}
+
+.vk-symbols-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #222;
+    padding: 10px;
+    border-top: 1px solid #444;
+}
+
+// ============================================
+// LOGIN OVERLAY
+// ============================================
+.login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.98);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Poppins', sans-serif;
+}
+
+.login-logo-section {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.login-logo {
+    height: 80px;
+    margin-bottom: 20px;
+}
+
+.login-title {
+    color: var(--color-accent-blue);
+    letter-spacing: 3px;
+    font-weight: 600;
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.login-subtitle {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 5px;
+}
+
+.login-form-box {
+    background: #151515;
+    padding: 40px;
+    border: 1px solid #333;
+    border-radius: 12px;
+    width: 350px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.login-field {
+    margin-bottom: 20px;
+}
+
+.login-label {
+    color: #888;
+    font-size: 0.75rem;
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.login-input {
+    width: 100%;
+    background: #0a0a0a;
+    color: white;
+    border: 1px solid #333;
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 6px;
+    box-sizing: border-box;
+
+    &:focus {
+        border-color: var(--color-accent-blue);
+        outline: none;
+    }
+}
+
+.login-btn {
+    width: 100%;
+    background: var(--color-accent-blue);
+    color: white;
+    font-weight: bold;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1rem;
+    margin-top: 10px;
+
+    &:hover {
+        background: #0077dd;
+        transform: scale(1.02);
+    }
+
+    &:active {
+        transform: scale(0.98);
+    }
+}
+
+@keyframes pulse-mic {
+    0% {
+        opacity: 0.5;
+        transform: scale(0.9);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: scale(0.9);
+    }
+}
+
+// ============================================
+// PTT ACTIVE STATE FOR CHANNEL CELLS
+// ============================================
+.call-cell.ptt-active {
+    background-color: #5a0000 !important;
+    border-color: #ff0000 !important;
+    box-shadow: inset 0 0 20px rgba(255, 0, 0, 0.5);
+    transform: scale(0.98);
+
+    .cell-name,
+    .cell-phone {
+        color: #fff !important;
+    }
+
+    &::before,
+    &::after {
+        background-color: #ff0000 !important;
+    }
+}
+
+// ============================================
+// DUPLICATE WARNING MODAL
+// ============================================
+.duplicate-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 999999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.duplicate-modal {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 30px 40px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    animation: scaleIn 0.2s ease-out;
+    max-width: 350px;
+}
+
+.duplicate-modal-icon {
+    display: none; // Match SmartX - no icon
+}
+
+.duplicate-modal-title {
+    color: #fff;
+    font-size: 18px;
+    font-weight: normal;
+    margin-bottom: 15px;
+}
+
+.duplicate-modal-message {
+    color: #aaa;
+    font-size: 14px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.duplicate-modal-btn {
+    background: #0088ff;
+    color: #fff;
+    border: none;
+    padding: 10px 30px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+        background: #0077dd;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-warning {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.05);
+    }
+}
+
+// ============================================
+// LADDER BAR - SmartX Style (Striped Bars)
+// ============================================
+.ladder-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 25px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    z-index: 1;
+
+    &.left {
+        left: -18px;
+        transform: skewX(165deg);
+        border-right: 1px solid #222;
+    }
+
+    &.right {
+        right: -18px;
+        transform: skewX(-20deg);
+        border-left: 1px solid #222;
+        z-index: 9999;
+    }
+}
+
+.ladder-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0%; // Default hidden
+    transition: height 0.1s ease-out;
+    background-size: 100% 8px;
+}
+
+// Left bar (green) - striped pattern
+.ladder-bar.left .ladder-fill {
+    background-image: repeating-linear-gradient(to top, #00ff66 0px, #00ff66 4px, transparent 4px, transparent 8px);
+    box-shadow: 0 0 15px rgba(0, 255, 102, 0.4);
+}
+
+// Right bar (red) - striped pattern
+.ladder-bar.right .ladder-fill {
+    background-image: repeating-linear-gradient(to top, #ff0000 0px, #ff0000 4px, transparent 4px, transparent 8px);
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+}
+
+// Speaking green (left bar active) - when OTHER side is doing PTT
+.call-cell.speaking-green .ladder-bar.left .ladder-fill {
+    animation: ladder-bounce 0.6s infinite ease-in-out;
+}
+
+// Speaking red (right bar active) - when THIS side is doing PTT
+.call-cell.speaking-red .ladder-bar.right .ladder-fill {
+    animation: ladder-bounce 0.6s infinite ease-in-out;
+}
+
+@keyframes ladder-bounce {
+    0% {
+        height: 20%;
+    }
+
+    25% {
+        height: 70%;
+    }
+
+    50% {
+        height: 40%;
+    }
+
+    75% {
+        height: 100%;
+    }
+
+    100% {
+        height: 30%;
+    }
+}
+
+// ============================================
+// GROUP TALK STYLES
+// ============================================
+
+// Channel Cell Group Bars
+.group-bars-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    display: flex;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.5); // Slight backing
+}
+
+.group-bar {
+    flex: 1;
+    height: 100%;
+    opacity: 0.2;
+    background: #555;
+    margin: 0 1px;
+}
+
+.bar-g1 {
+    background-color: #3498db;
+}
+
+.bar-g2 {
+    background-color: #e67e22;
+}
+
+.bar-g3 {
+    background-color: #9b59b6;
+}
+
+.bar-g1.active,
+.bar-g2.active,
+.bar-g3.active {
+    opacity: 1;
+    box-shadow: 0 0 5px currentColor;
+}
+
+// Group Buttons (Left Column)
+.group-talk-area {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+    padding: 10px;
+    background: #0a0a0a;
+    border-top: 1px solid #222;
+}
+
+.group-btn {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px 5px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.1s;
+    user-select: none;
+    border-bottom: 4px solid transparent;
+
+    &:active {
+        transform: scale(0.95);
+    }
+
+    &:hover {
+        background: #222;
+    }
+
+    &.active-talk {
+        background: #1e3a25;
+        border-color: #00ff66;
+        border-bottom-color: #00ff66 !important;
+    }
+
+    .group-title {
+        font-weight: bold;
+        color: #fff;
+        font-size: 1.1rem;
+    }
+
+    .group-subtitle {
+        font-size: 0.6rem;
+        color: #888;
+        margin-top: 2px;
+    }
+}
+
+// Group Border Colors (Default state)
+.group-btn:nth-child(1) {
+    border-bottom-color: #3498db;
+}
+
+.group-btn:nth-child(2) {
+    border-bottom-color: #e67e22;
+}
+
+.group-btn:nth-child(3) {
+    border-bottom-color: #9b59b6;
+}
+
+// Config Page (Middle Column)
+.grouptalk-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.config-table {
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+
+    &.slot-G1 {
+        border-top: 3px solid #3498db;
+    }
+
+    &.slot-G2 {
+        border-top: 3px solid #e67e22;
+    }
+
+    &.slot-G3 {
+        border-top: 3px solid #9b59b6;
+    }
+}
+
+.config-cell {
+    position: relative;
+    border-radius: 4px;
+    transition: all 0.2s;
+
+    &:hover {
+        filter: brightness(1.2);
+    }
+
+    &.active {
+        border-width: 2px !important;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .trash-icon {
+        cursor: pointer;
+        transition: transform 0.2s;
+
+        &:hover {
+            transform: scale(1.2);
+            font-weight: bold;
+        }
+    }
+}

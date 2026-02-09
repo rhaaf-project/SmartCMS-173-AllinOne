@@ -1,27 +1,64 @@
-# VristoAngular
+# SmartCMS 173 All-in-One
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 15.2.4.
+**Server:** 103.154.80.173  
+**Purpose:** Demo server with CMS, PBX, and Turret combined
 
-## Development server
+---
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+## Repo Structure
 
-## Code scaffolding
+```
+SmartCMS-173-AllinOne/
+├── cms/           # Angular CMS (source + API)
+├── pbx/           # Docker Asterisk configs
+├── turret/        # Ionic Turret App
+├── docker-compose.yml
+└── README.md
+```
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+---
 
-## Build
+## Server Paths
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+| Component | Path | Description |
+|-----------|------|-------------|
+| CMS Angular | `/var/www/SmartCMS-173/` | dist + api.php |
+| CMS Source | `/var/www/SmartCMS-173/src/` | Angular source |
+| PBX Docker | `/opt/smartcms/asterisk/` | Dockerfile, configs |
+| Turret | `/var/www/turret/` | Ionic app |
+| Docker Compose | `/opt/smartcms/docker-compose.yml` | Main compose |
 
-## Running unit tests
+---
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Quick Start
 
-## Running end-to-end tests
+```bash
+# Start all services
+cd /opt/smartcms
+docker-compose up -d
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+# Start CMS API
+cd /var/www/SmartCMS-173
+./start_smartcms.sh
+```
 
-## Further help
+---
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+## Login Credentials
+
+| Email | Password |
+|-------|----------|
+| root@smartcms.local | Maja1234 |
+| superadmin@smartcms.local | SmartCMS@2026 |
+
+---
+
+## URLs
+
+- **CMS:** http://103.154.80.173/
+- **Turret:** TBD (requires setup)
+- **PBX:** Internal Docker network
+
+---
+
+*Last updated: 2026-02-10*

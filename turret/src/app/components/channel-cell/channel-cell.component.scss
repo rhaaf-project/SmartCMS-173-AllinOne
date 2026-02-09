@@ -1,0 +1,223 @@
+// ChannelCell styles - Glassmorphism with active/PTT states
+.channel-cell {
+    position: relative;
+    aspect-ratio: 1;
+    min-width: 60px;
+    min-height: 60px;
+    background: rgba(40, 40, 60, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+
+    &:hover {
+        background: rgba(60, 60, 90, 0.7);
+        border-color: rgba(255, 255, 255, 0.15);
+        transform: translateY(-2px);
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    // === ACTIVE STATE ===
+    &.active {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3));
+        border-color: rgba(34, 197, 94, 0.5);
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+
+        .channel-label {
+            color: #22c55e;
+        }
+    }
+
+    // === PTT STATE ===
+    &.ptt {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(220, 38, 38, 0.4));
+        border-color: rgba(239, 68, 68, 0.6);
+        box-shadow: 0 0 25px rgba(239, 68, 68, 0.3);
+        animation: ptt-pulse 0.5s infinite;
+
+        .channel-label {
+            color: #ef4444;
+        }
+    }
+
+    // === TYPE COLORS ===
+    &.whatsapp {
+        &.active {
+            background: linear-gradient(135deg, rgba(37, 211, 102, 0.3), rgba(18, 140, 126, 0.3));
+            border-color: rgba(37, 211, 102, 0.5);
+        }
+    }
+
+    &.teams {
+        &.active {
+            background: linear-gradient(135deg, rgba(98, 100, 167, 0.3), rgba(75, 76, 143, 0.3));
+            border-color: rgba(98, 100, 167, 0.5);
+        }
+    }
+}
+
+@keyframes ptt-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+    }
+}
+
+// === CHANNEL NUMBER ===
+.channel-number {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+// === CHANNEL LABEL ===
+.channel-label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+// === TYPE ICON ===
+.type-icon {
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.3);
+}
+
+// === ACTIVE INDICATOR (Ladder Bar) ===
+.active-indicator {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.ladder-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+
+    span {
+        width: 3px;
+        background: linear-gradient(to top, #22c55e, #4ade80);
+        border-radius: 1px;
+        animation: ladder 0.8s ease-in-out infinite;
+
+        &:nth-child(1) {
+            height: 40%;
+            animation-delay: 0s;
+        }
+
+        &:nth-child(2) {
+            height: 70%;
+            animation-delay: 0.1s;
+        }
+
+        &:nth-child(3) {
+            height: 100%;
+            animation-delay: 0.2s;
+        }
+
+        &:nth-child(4) {
+            height: 60%;
+            animation-delay: 0.3s;
+        }
+    }
+}
+
+@keyframes ladder {
+
+    0%,
+    100% {
+        transform: scaleY(1);
+    }
+
+    50% {
+        transform: scaleY(0.5);
+    }
+}
+
+// === PTT OVERLAY ===
+.ptt-overlay {
+    position: absolute;
+    inset: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 5;
+    -webkit-tap-highlight-color: transparent;
+}
+
+// === PTT INDICATOR ===
+.ptt-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    background: rgba(239, 68, 68, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    z-index: 10;
+    animation: ptt-icon-pulse 0.5s infinite;
+
+    ion-icon {
+        font-size: 18px;
+    }
+}
+
+@keyframes ptt-icon-pulse {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+}
+
+// === RESPONSIVE ===
+@media (max-width: 768px) {
+    .channel-cell {
+        min-width: 50px;
+        min-height: 50px;
+        border-radius: 8px;
+    }
+
+    .channel-label {
+        font-size: 14px;
+    }
+
+    .channel-number {
+        font-size: 8px;
+    }
+}

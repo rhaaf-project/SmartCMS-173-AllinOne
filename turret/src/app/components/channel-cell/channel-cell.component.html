@@ -1,0 +1,35 @@
+<div class="channel-cell" [class.active]="channel.isActive" [class.ptt]="channel.isPtt"
+    [class.sip]="channel.type === 'sip'" [class.whatsapp]="channel.type === 'whatsapp'"
+    [class.teams]="channel.type === 'teams'">
+
+    <!-- Channel Number Badge -->
+    <div class="channel-number">{{ channelNumber }}</div>
+
+    <!-- Channel Label / Name -->
+    <div class="channel-label">{{ channelLabel }}</div>
+
+    <!-- Type Icon -->
+    <ion-icon [name]="typeIcon" class="type-icon"></ion-icon>
+
+    <!-- Active Indicator (Ladder Bar placeholder) -->
+    @if (channel.isActive) {
+    <div class="active-indicator">
+        <div class="ladder-bar">
+            <span></span><span></span><span></span><span></span>
+        </div>
+    </div>
+    }
+
+    <!-- PTT Button (overlays the cell for touch/mouse events) -->
+    <button class="ptt-overlay" (mousedown)="onPttStart($event)" (mouseup)="onPttEnd($event)"
+        (mouseleave)="onPttEnd($event)" (touchstart)="onPttStart($event)" (touchend)="onPttEnd($event)"
+        (touchcancel)="onPttEnd($event)">
+    </button>
+
+    <!-- PTT Active Indicator -->
+    @if (channel.isPtt) {
+    <div class="ptt-indicator">
+        <ion-icon name="mic"></ion-icon>
+    </div>
+    }
+</div>
