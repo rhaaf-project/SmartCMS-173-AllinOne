@@ -1,0 +1,171 @@
+# ============================================================
+# SmartCMS Docker Compose
+# Server: 103.154.80.173
+# ============================================================
+#
+# Directory layout on server (/opt/smartcms/):
+#   ├── docker-compose.yml
+#   ├── .env
+#   ├── frontend/          ← Angular (cloned from GitHub)
+#   ├── backend/           ← Laravel API
+#   ├── asterisk/          ← Custom Asterisk build
+#   ├── mariadb/
+#   ├── nginx/
+#   └── scripts/
+#
+# ============================================================
+
+services:
+  # ============================================================
+  # MariaDB 11.4
+  # ============================================================
+  mariadb:
+    image: mariadb:11.4
+    container_name: smartcms-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-SmartCMS_Root_2026!}
+      MYSQL_DATABASE: ${DB_NAME:-db_ucx}
+      MYSQL_USER: ${DB_USER:-smartcms}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-SmartCMS_DB_2026!}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mariadb/my.cnf:/etc/mysql/conf.d/smartcms.cnf:ro
+    ports:
+      - "127.0.0.1:3306:3306"
+    networks:
+      - smartcms-net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ============================================================
+  # Asterisk 21 - Custom Build from Source
+  # ============================================================
+  asterisk:
+    build:
+      context: ./asterisk
+      dockerfile: Dockerfile
+    container_name: smartcms-asterisk
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-db_ucx}
+      DB_USER: ${DB_USER:-smartcms}
+      DB_PASS: ${DB_PASSWORD:-SmartCMS_DB_2026!}
+      AMI_SECRET: ${AMI_SECRET:-smartcms_ami_secret_2026}
+      ARI_PASSWORD: ${ARI_PASSWORD:-smartcms_ari_secret_2026}
+      EXTERNAL_IP: ${EXTERNAL_IP:-103.154.80.173}
+    volumes:
+      - asterisk_logs:/var/log/asterisk
+      - asterisk_spool:/var/spool/asterisk
+      - ./asterisk/configs:/etc/asterisk/custom:ro
+      - ./certs:/etc/asterisk/keys:ro
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "5061:5061/tcp"
+      - "8088:8088/tcp"
+      - "8089:8089/tcp"
+      - "10000-10500:10000-10500/udp"
+      - "5038:5038/tcp"
+    networks:
+      - smartcms-net
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+
+  # ============================================================
+  # Laravel API Backend (PHP 8.3)
+  # ============================================================
+  cms-api:
+    build:
+      context: .
+      dockerfile: cms/Dockerfile.api
+    container_name: smartcms-api
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      APP_NAME: SmartCMS
+      APP_ENV: production
+      APP_KEY: ${APP_KEY:-base64:CHANGE_ME}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: http://${EXTERNAL_IP:-103.154.80.173}
+      DB_CONNECTION: mysql
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_NAME:-db_ucx}
+      DB_USERNAME: ${DB_USER:-smartcms}
+      DB_PASSWORD: ${DB_PASSWORD:-SmartCMS_DB_2026!}
+      AMI_HOST: asterisk
+      AMI_PORT: 5038
+      AMI_USERNAME: smartcms
+      AMI_SECRET: ${AMI_SECRET:-smartcms_ami_secret_2026}
+      ARI_HOST: asterisk
+      ARI_PORT: 8088
+      ARI_USERNAME: smartcms
+      ARI_PASSWORD: ${ARI_PASSWORD:-smartcms_ari_secret_2026}
+      CACHE_DRIVER: database
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      REDIS_HOST: redis
+    volumes:
+      - cms_storage:/var/www/html/storage
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - smartcms-net
+
+  # ============================================================
+  # Angular 17 Frontend (Node build → Nginx serve)
+  # ============================================================
+  cms-frontend:
+    build:
+      context: .
+      dockerfile: cms/Dockerfile.frontend
+    container_name: smartcms-frontend
+    restart: unless-stopped
+    depends_on:
+      - cms-api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/ssl:ro
+    networks:
+      - smartcms-net
+
+  # ============================================================
+  # Redis 7
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: smartcms-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - smartcms-net
+
+volumes:
+  mariadb_data:
+  asterisk_logs:
+  asterisk_spool:
+  cms_storage:
+  redis_data:
+
+networks:
+  smartcms-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
