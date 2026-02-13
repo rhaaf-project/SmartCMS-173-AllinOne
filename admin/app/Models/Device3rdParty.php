@@ -7,16 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 class Device3rdParty extends Model
 {
     protected $table = 'device_3rd_parties';
-    
+
     protected $fillable = [
-        'name',
-        'mac_address',
-        'ip_address',
-        'device_type',
-        'manufacturer',
-        'model',
-        'description',
-        'is_active',
+    'call_server_id', // Tetap perlu (relasi ke server)
+    'name',           // PENTING: Ini jadi "Caller ID Name"
+    'username',       // PENTING: Ini jadi "Extension Number"
+    'password',       // PENTING: Ini jadi "Secret"
+    'description',    // Opsional (Catatan)
+    'is_active',
     ];
 
     protected $casts = [
