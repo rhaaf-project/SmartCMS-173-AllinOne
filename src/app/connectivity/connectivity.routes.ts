@@ -29,7 +29,7 @@ export const CONNECTIVITY_ROUTES: Routes = [
     {
         path: 'sip-3rd-party',
         loadComponent: () => import('./sip-3rd-party').then((d) => d.Sip3rdPartyComponent),
-        title: 'SIP/3rd Party | SmartUCX',
+        title: 'SIP/3rd Party Line | SmartUCX',
     },
     {
         path: 'private-wire',

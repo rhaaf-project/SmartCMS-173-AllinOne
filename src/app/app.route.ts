@@ -96,6 +96,12 @@ export const routes: Routes = [
             { path: 'recording/:any', component: NAComponent },
             { path: 'recording/:any/:any2', component: NAComponent },
             { path: 'device', component: NAComponent },
+            {
+                path: 'device/3rd-party-device',
+                loadComponent: () => import('./device/third-party-device/third-party-device').then((d) => d.ThirdPartyDeviceComponent),
+                data: { title: '3rd Party Device | SmartUCX', pageKey: 'device.third_party_device' },
+                canActivate: [AuthGuard],
+            },
             { path: 'device/:any', component: NAComponent },
             { path: 'device/:any/:any2', component: NAComponent },
             // Turret Management
