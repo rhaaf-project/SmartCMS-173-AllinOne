@@ -1,7 +1,7 @@
 <div>
     <div class="panel" style="padding: 15px;">
         <div class="mb-5 flex flex-col gap-5 md:flex-row md:items-center">
-            <h5 class="text-medium font-medium dark:text-white-light">SBC Nodes (Servers)</h5>
+            <h5 class="text-medium font-medium dark:text-white-light">SBC</h5>
             <div class="flex ltr:ml-auto rtl:mr-auto">
                 <div class="relative mr-4">
                     <input type="text" placeholder="Search..." class="form-input-sm form-input w-auto pr-8"
@@ -20,7 +20,7 @@
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
-                    New SBC Node
+                    New SBC
                 </button>
             </div>
         </div>
@@ -46,7 +46,7 @@
                             </td>
                         </tr>
                         <tr *ngIf="!isLoading && filteredSBCs.length === 0">
-                            <td colspan="6" class="text-center">No SBC nodes found</td>
+                            <td colspan="6" class="text-center">No SBC found</td>
                         </tr>
                         <tr *ngFor="let sbc of filteredSBCs" class="group">
                             <td>
@@ -110,7 +110,8 @@
             <div class="panel my-8 w-full max-w-lg overflow-hidden rounded-lg border-0 p-0"
                 (click)="$event.stopPropagation()" [@toggleAnimation]>
                 <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
-                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Create SBC Node' : 'Edit SBC Node' }}
+                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Create SBC' : 'Edit
+                        SBC' }}
                     </h5>
                     <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()"><svg width="20"
                             height="20" viewBox="0 0 24 24" fill="none">
@@ -202,7 +203,7 @@
                     <div class="mb-6">
                         <h2
                             class="text-lg font-semibold text-gray-700 border-b border-white-light dark:border-[#1b2e4b] pb-2 mb-3">
-                            SBC Node Information</h2>
+                            SBC Information</h2>
                         <div class="grid grid-cols-2 gap-4">
                             <div class="border-b border-dotted border-white-light dark:border-[#1b2e4b] pb-2">
                                 <span class="text-sm text-gray-500">SBC Name:</span>

@@ -232,6 +232,47 @@ export class PolicyPrivilegeComponent implements OnInit {
         this.hasChanges = true;
     }
 
+    isAllPermissionsEnabled(pageKey: string): boolean {
+        const p = this.permissions[pageKey];
+        return p ? p.view && p.create && p.edit && p.delete : false;
+    }
+
+    toggleAllPermissions(pageKey: string) {
+        if (this.selectedRole === 'superroot') return;
+        if (!this.permissions[pageKey]) {
+            this.permissions[pageKey] = { view: false, create: false, edit: false, delete: false };
+        }
+        const allOn = this.isAllPermissionsEnabled(pageKey);
+        this.permissions[pageKey].view = !allOn;
+        this.permissions[pageKey].create = !allOn;
+        this.permissions[pageKey].edit = !allOn;
+        this.permissions[pageKey].delete = !allOn;
+        this.hasChanges = true;
+    }
+
+    get allViewEnabled(): boolean {
+        return this.pageGroups.every(group =>
+            group.pages.every(p => this.isAllPermissionsEnabled(p.key))
+        );
+    }
+
+    toggleAllView() {
+        if (this.selectedRole === 'superroot') return;
+        const allEnabled = this.allViewEnabled;
+        this.pageGroups.forEach(group => {
+            group.pages.forEach(p => {
+                if (!this.permissions[p.key]) {
+                    this.permissions[p.key] = { view: false, create: false, edit: false, delete: false };
+                }
+                this.permissions[p.key].view = !allEnabled;
+                this.permissions[p.key].create = !allEnabled;
+                this.permissions[p.key].edit = !allEnabled;
+                this.permissions[p.key].delete = !allEnabled;
+            });
+        });
+        this.hasChanges = true;
+    }
+
     toggleGroupView(group: PageGroup) {
         if (this.selectedRole === 'superroot') return;
 

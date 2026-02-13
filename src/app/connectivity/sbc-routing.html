@@ -32,23 +32,24 @@
                     <thead>
                         <tr>
                             <th>Source</th>
-                            <th>Pattern (S)</th>
+                            <th>(S)DID</th>
+                            <th>(S)CID</th>
                             <th>Destination</th>
-                            <th>Pattern (D)</th>
-                            <th>Priority</th>
+                            <th>(D)DID</th>
+                            <th>(D)CID</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr *ngIf="isLoading">
-                            <td colspan="6" class="text-center">
+                            <td colspan="7" class="text-center">
                                 <div
                                     class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
                                 </div>
                             </td>
                         </tr>
                         <tr *ngIf="!isLoading && filteredRoutes.length === 0">
-                            <td colspan="6" class="text-center">No routes found</td>
+                            <td colspan="7" class="text-center">No routes found</td>
                         </tr>
                         <tr *ngFor="let route of filteredRoutes" class="group">
                             <td>
@@ -57,13 +58,14 @@
                                     getTrunkName(route.src_from_sbc_id) }}</div>
                             </td>
                             <td>{{ route.src_pattern }}</td>
+                            <td>{{ route.src_cid_filter || '-' }}</td>
                             <td>
                                 <div class="font-semibold text-success">{{ route.dest_description }}</div>
                                 <div class="text-xs text-white-dark">{{ getSbcName(route.dest_call_server_id) }} / {{
                                     getTrunkName(route.dest_from_sbc_id) }}</div>
                             </td>
                             <td>{{ route.dest_pattern }}</td>
-                            <td>{{ route.src_priority }}</td>
+                            <td>{{ route.dest_cid_filter || '-' }}</td>
                             <td class="text-center">
                                 <div class="flex items-center justify-center gap-1">
                                     <button type="button" class="btn btn-sm btn-outline-primary border-0 p-1"
@@ -108,7 +110,8 @@
             <div class="panel my-8 w-full max-w-6xl overflow-hidden rounded-lg border-0 p-0"
                 (click)="$event.stopPropagation()" [@toggleAnimation]>
                 <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
-                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Create SBC Routing' : 'Edit SBC Routing'
+                    <h5 class="text-lg font-semibold text-white">{{ modalMode === 'create' ? 'Create SBC Routing' :
+                        'Edit SBC Routing'
                         }}</h5>
                     <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()"><svg width="20"
                             height="20" viewBox="0 0 24 24" fill="none">
@@ -122,7 +125,7 @@
                         <div class="panel mb-6 bg-[#f4f4f4] dark:bg-[#1b2e4b] border-0">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label class="text-white-dark">SBC Server (Node)</label>
+                                    <label class="text-white-dark">SBC</label>
                                     <select [(ngModel)]="formData.src_call_server_id" name="src_call_server_id"
                                         class="form-select text-white-dark"
                                         (change)="formData.dest_call_server_id = formData.src_call_server_id">
