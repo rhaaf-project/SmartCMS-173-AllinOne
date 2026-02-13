@@ -352,30 +352,73 @@ if ($resource === 'usage-report' && $method === 'GET') {
     exit;
 }
 
-// SBC Status Monitor endpoint - get connections for a specific SBC (from sbc_connections table)
+// SBC Status Monitor - Live PJSIP Channels endpoint
 if (preg_match('/^sbc-status\/(\d+)$/', $resource . '/' . $id, $matches)) {
     $sbcId = $matches[1];
     try {
-        $stmt = $pdo->prepare("
-            SELECT 
-                sc.id,
-                sc.call_server_id as sbc_id,
-                sc.name as peer_name,
-                sc.registration as peer_type,
-                CONCAT(sc.sip_server, ':', sc.sip_server_port) as remote_address,
-                sc.auth_username as local_user,
-                sc.maxchans as max_calls,
-                cs.name as sbc_name,
-                cs.host as sbc_host
-            FROM sbc_connections sc
-            LEFT JOIN call_servers cs ON sc.call_server_id = cs.id
-            WHERE sc.call_server_id = ?
-            ORDER BY sc.name ASC
-        ");
-        $stmt->execute([$sbcId]);
-        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $channels = [];
 
-        echo json_encode(['success' => true, 'data' => $data]);
+        // Try docker exec (for 173 all-in-one)
+        $output = [];
+        $retval = -1;
+        exec('docker exec asterisk asterisk -rx "pjsip show channels" 2>/dev/null', $output, $retval);
+
+        if ($retval !== 0) {
+            // Fallback: try direct asterisk CLI
+            $output = [];
+            exec('asterisk -rx "pjsip show channels" 2>/dev/null', $output, $retval);
+        }
+
+        if ($retval === 0 && !empty($output)) {
+            // Parse pjsip show channels output
+            // Format:
+            //   Channel: PJSIP/6800-0000883e/Dial    Up    00:14:42
+            //       Exten: s                          CLCID: "CID:6800" <10091>
+            $i = 0;
+            while ($i < count($output)) {
+                $line = trim($output[$i]);
+                // Match channel line: "Channel: PJSIP/xxx    State    Time"
+                if (preg_match('/^Channel:\s+(\S+)\s+(\w+)\s+([\d:]+)/', $line, $m)) {
+                    $channelName = $m[1];
+                    $state = $m[2];
+                    $duration = $m[3];
+
+                    // Parse next line for Exten and CLCID
+                    $source = '-';
+                    $destination = '-';
+                    if (isset($output[$i + 1])) {
+                        $extLine = trim($output[$i + 1]);
+                        // Extract CLCID name as source: "CID:6800" or "Monitor"
+                        if (preg_match('/CLCID:\s*"([^"]*)"/', $extLine, $cm)) {
+                            $clcidName = $cm[1];
+                            // Extract extension number from CID:XXXX format
+                            if (preg_match('/CID:(\d+)/', $clcidName, $cidm)) {
+                                $source = $cidm[1];
+                            } else {
+                                $source = $clcidName;
+                            }
+                        }
+                        // Extract CLCID number as destination: <10091>
+                        if (preg_match('/CLCID:.*<(\d+)>/', $extLine, $dm)) {
+                            $destination = $dm[1];
+                        }
+                    }
+
+                    $channels[] = [
+                        'channel' => $channelName,
+                        'source' => $source,
+                        'destination' => $destination,
+                        'duration' => $duration,
+                        'state' => $state
+                    ];
+                    $i += 2; // skip exten line
+                } else {
+                    $i++;
+                }
+            }
+        }
+
+        echo json_encode(['success' => true, 'data' => $channels]);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => $e->getMessage(), 'data' => []]);
     }

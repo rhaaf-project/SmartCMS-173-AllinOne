@@ -21,28 +21,6 @@
                     <icon-refresh class="shrink-0" [ngClass]="{'animate-spin': isRefreshing}" />
                     <span class="ml-1">Refresh</span>
                 </button>
-                <!-- Export CSV Button -->
-                <button type="button" class="btn btn-success btn-sm" (click)="exportCSV()"
-                    [disabled]="connectionStatuses.length === 0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" class="mr-1">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    CSV
-                </button>
-                <!-- Print Button -->
-                <button type="button" class="btn btn-secondary btn-sm" (click)="printReport()"
-                    [disabled]="connectionStatuses.length === 0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" class="mr-1">
-                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                        <rect x="6" y="14" width="12" height="8"></rect>
-                    </svg>
-                    Print
-                </button>
             </div>
         </div>
 
@@ -56,7 +34,10 @@
                 <div class="text-sm text-gray-500 dark:text-gray-400">IP Address</div>
                 <div class="text-lg font-mono">{{ selectedSbc.host }}</div>
             </div>
-
+            <div class="panel bg-warning/10 p-4">
+                <div class="text-sm text-gray-500 dark:text-gray-400">Active Channels</div>
+                <div class="text-lg font-semibold">{{ liveChannels.length }}</div>
+            </div>
             <div class="panel p-4" [ngClass]="selectedSbc.is_active ? 'bg-success/10' : 'bg-danger/10'">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Status</div>
                 <div class="text-lg font-semibold" [ngClass]="selectedSbc.is_active ? 'text-success' : 'text-danger'">
@@ -65,46 +46,47 @@
             </div>
         </div>
 
-
-
-        <!-- Connection Status List -->
+        <!-- Live Channels Table -->
         <div class="mb-3">
-            <h6 class="font-semibold mb-3">Connection Status List</h6>
+            <h6 class="font-semibold mb-3">Live Channels</h6>
             <div class="table-responsive">
                 <table class="table-hover" id="sbc-status-table">
                     <thead>
                         <tr>
-                            <th>Connection Name</th>
-                            <th>Max Ch.</th>
-                            <th>SIP Server</th>
+                            <th>Channel</th>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Duration</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr *ngIf="isLoading || isRefreshing">
-                            <td colspan="3" class="text-center">
+                            <td colspan="4" class="text-center">
                                 <div
                                     class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-primary border-l-transparent">
                                 </div>
                             </td>
                         </tr>
                         <tr *ngIf="!isLoading && !isRefreshing && !selectedSbcId">
-                            <td colspan="3" class="text-center text-gray-500">Please select an SBC to view connection
-                                status</td>
+                            <td colspan="4" class="text-center text-gray-500">Please select an SBC to view live
+                                channels</td>
                         </tr>
-                        <tr *ngIf="!isLoading && !isRefreshing && selectedSbcId && connectionStatuses.length === 0">
-                            <td colspan="3" class="text-center text-gray-500">No connections found for this SBC</td>
+                        <tr *ngIf="!isLoading && !isRefreshing && selectedSbcId && liveChannels.length === 0">
+                            <td colspan="4" class="text-center text-gray-500">No active channels</td>
                         </tr>
-                        <tr *ngFor="let conn of connectionStatuses">
+                        <tr *ngFor="let ch of liveChannels">
                             <td>
-                                <div class="font-semibold">{{ conn.peer_name }}</div>
-                                <div *ngIf="conn.local_user" class="text-xs text-gray-500">User: {{ conn.local_user }}
-                                </div>
+                                <div class="font-mono text-sm">{{ ch.channel }}</div>
                             </td>
                             <td>
-                                <span class="font-mono text-sm">{{ conn.max_calls || '-' }}</span>
+                                <span class="font-semibold">{{ ch.source }}</span>
                             </td>
                             <td>
-                                <span class="font-mono text-sm">{{ conn.remote_address }}</span>
+                                <span class="font-semibold">{{ ch.destination }}</span>
+                            </td>
+                            <td>
+                                <span class="font-mono text-sm badge bg-success/20 text-success">{{ ch.duration
+                                    }}</span>
                             </td>
                         </tr>
                     </tbody>
@@ -114,10 +96,10 @@
 
         <!-- Footer Info -->
         <div class="flex items-center justify-between text-sm text-gray-500">
-            <div>Showing {{ connectionStatuses.length }} connection(s)</div>
+            <div>{{ liveChannels.length }} active channel(s)</div>
             <div *ngIf="lastRefreshed">
                 Last refreshed: {{ lastRefreshed | date:'HH:mm:ss' }}
-                <span *ngIf="autoRefreshEnabled" class="ml-2 text-primary">(Auto-refresh: 30s)</span>
+                <span *ngIf="autoRefreshEnabled" class="ml-2 text-primary">(Auto-refresh: 5s)</span>
             </div>
         </div>
     </div>
