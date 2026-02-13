@@ -352,68 +352,95 @@ if ($resource === 'usage-report' && $method === 'GET') {
     exit;
 }
 
-// SBC Status Monitor - Live PJSIP Channels endpoint
+// SBC Status Monitor - Live PJSIP Channels via AMI (171→172 environment)
 if (preg_match('/^sbc-status\/(\d+)$/', $resource . '/' . $id, $matches)) {
     $sbcId = $matches[1];
     try {
         $channels = [];
 
-        // Try docker exec (for 173 all-in-one)
-        $output = [];
-        $retval = -1;
-        exec('docker exec asterisk asterisk -rx "pjsip show channels" 2>/dev/null', $output, $retval);
+        // Get PBX host from call_servers table
+        $stmt = $pdo->prepare("SELECT host, port FROM call_servers WHERE id = ?");
+        $stmt->execute([$sbcId]);
+        $server = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($retval !== 0) {
-            // Fallback: try direct asterisk CLI
-            $output = [];
-            exec('asterisk -rx "pjsip show channels" 2>/dev/null', $output, $retval);
-        }
+        if ($server) {
+            $pbxHost = $server['host'];
+            $amiPort = 5038;
+            $amiUser = 'admin';
+            $amiSecret = 'admin1234';
 
-        if ($retval === 0 && !empty($output)) {
-            // Parse pjsip show channels output
-            // Format:
-            //   Channel: PJSIP/6800-0000883e/Dial    Up    00:14:42
-            //       Exten: s                          CLCID: "CID:6800" <10091>
-            $i = 0;
-            while ($i < count($output)) {
-                $line = trim($output[$i]);
-                // Match channel line: "Channel: PJSIP/xxx    State    Time"
-                if (preg_match('/^Channel:\s+(\S+)\s+(\w+)\s+([\d:]+)/', $line, $m)) {
-                    $channelName = $m[1];
-                    $state = $m[2];
-                    $duration = $m[3];
+            // Connect to AMI
+            $socket = @fsockopen($pbxHost, $amiPort, $errno, $errstr, 3);
+            if ($socket) {
+                // Read banner
+                fgets($socket);
 
-                    // Parse next line for Exten and CLCID
-                    $source = '-';
-                    $destination = '-';
-                    if (isset($output[$i + 1])) {
-                        $extLine = trim($output[$i + 1]);
-                        // Extract CLCID name as source: "CID:6800" or "Monitor"
-                        if (preg_match('/CLCID:\s*"([^"]*)"/', $extLine, $cm)) {
-                            $clcidName = $cm[1];
-                            // Extract extension number from CID:XXXX format
-                            if (preg_match('/CID:(\d+)/', $clcidName, $cidm)) {
-                                $source = $cidm[1];
-                            } else {
-                                $source = $clcidName;
+                // Login
+                fwrite($socket, "Action: Login\r\nUsername: {$amiUser}\r\nSecret: {$amiSecret}\r\n\r\n");
+                $loginResponse = '';
+                while (($line = fgets($socket)) !== false) {
+                    $loginResponse .= $line;
+                    if (trim($line) === '')
+                        break;
+                }
+
+                // Send command to get channels
+                fwrite($socket, "Action: Command\r\nCommand: pjsip show channels\r\n\r\n");
+
+                // Read response
+                $output = '';
+                $timeout = time() + 5;
+                while (time() < $timeout) {
+                    $line = fgets($socket, 4096);
+                    if ($line === false)
+                        break;
+                    $output .= $line;
+                    if (strpos($line, '--END COMMAND--') !== false)
+                        break;
+                }
+
+                // Logoff
+                fwrite($socket, "Action: Logoff\r\n\r\n");
+                fclose($socket);
+
+                // Parse output lines
+                $lines = explode("\n", $output);
+                $i = 0;
+                while ($i < count($lines)) {
+                    $line = trim($lines[$i]);
+                    if (preg_match('/^Channel:\s+(\S+)\s+(\w+)\s+([\d:]+)/', $line, $m)) {
+                        $channelName = $m[1];
+                        $state = $m[2];
+                        $duration = $m[3];
+
+                        $source = '-';
+                        $destination = '-';
+                        if (isset($lines[$i + 1])) {
+                            $extLine = trim($lines[$i + 1]);
+                            if (preg_match('/CLCID:\s*"([^"]*)"/', $extLine, $cm)) {
+                                $clcidName = $cm[1];
+                                if (preg_match('/CID:(\d+)/', $clcidName, $cidm)) {
+                                    $source = $cidm[1];
+                                } else {
+                                    $source = $clcidName;
+                                }
+                            }
+                            if (preg_match('/CLCID:.*<(\d+)>/', $extLine, $dm)) {
+                                $destination = $dm[1];
                             }
                         }
-                        // Extract CLCID number as destination: <10091>
-                        if (preg_match('/CLCID:.*<(\d+)>/', $extLine, $dm)) {
-                            $destination = $dm[1];
-                        }
-                    }
 
-                    $channels[] = [
-                        'channel' => $channelName,
-                        'source' => $source,
-                        'destination' => $destination,
-                        'duration' => $duration,
-                        'state' => $state
-                    ];
-                    $i += 2; // skip exten line
-                } else {
-                    $i++;
+                        $channels[] = [
+                            'channel' => $channelName,
+                            'source' => $source,
+                            'destination' => $destination,
+                            'duration' => $duration,
+                            'state' => $state
+                        ];
+                        $i += 2;
+                    } else {
+                        $i++;
+                    }
                 }
             }
         }
