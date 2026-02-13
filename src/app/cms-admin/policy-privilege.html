@@ -1,0 +1,186 @@
+<div class="panel">
+    <div class="flex items-center justify-between mb-5">
+        <h5 class="text-lg font-semibold dark:text-white-light">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 inline-block mr-2" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+            Role Permission Management
+        </h5>
+        <div class="flex items-center gap-3">
+            <!-- Role Selector -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm font-medium dark:text-white-light leading-none !mb-0">Role:</label>
+                <select [(ngModel)]="selectedRole" (ngModelChange)="onRoleChange()"
+                    class="form-select w-56 text-sm !py-1.5">
+                    <option *ngFor="let role of roles" [value]="role">{{ getRoleLabel(role) }}</option>
+                </select>
+            </div>
+            <!-- Role Badge -->
+            <span class="px-3 py-1 rounded-full text-xs font-bold" [ngClass]="getRoleBadgeClass(selectedRole)">
+                {{ selectedRole | uppercase }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Info Banner -->
+    <div *ngIf="selectedRole === 'superroot'"
+        class="flex items-center p-3.5 rounded text-warning bg-warning-light dark:bg-warning-dark-light mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mr-2 shrink-0" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <span class="text-sm"><strong>Super Root</strong> has full access to all features. Permissions cannot be
+            modified.</span>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="isLoading" class="flex justify-center py-10">
+        <span
+            class="animate-spin border-4 border-primary border-l-transparent rounded-full w-10 h-10 inline-block align-middle"></span>
+    </div>
+
+    <!-- Permission Table -->
+    <div *ngIf="!isLoading" class="table-responsive">
+        <table class="table-hover">
+            <thead>
+                <tr>
+                    <th class="w-8">#</th>
+                    <th>Page / Feature</th>
+                    <th class="text-center w-24">
+                        <div class="flex flex-col items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mb-1 text-info" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            <span class="text-xs">View</span>
+                        </div>
+                    </th>
+                    <th class="text-center w-24">
+                        <div class="flex flex-col items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mb-1 text-success"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span class="text-xs">Create</span>
+                        </div>
+                    </th>
+                    <th class="text-center w-24">
+                        <div class="flex flex-col items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mb-1 text-warning"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                            </svg>
+                            <span class="text-xs">Edit</span>
+                        </div>
+                    </th>
+                    <th class="text-center w-24">
+                        <div class="flex flex-col items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mb-1 text-danger" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                            <span class="text-xs">Delete</span>
+                        </div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <ng-container *ngFor="let group of pageGroups; let gi = index">
+                    <!-- Group Header -->
+                    <tr class="bg-gray-50 dark:bg-gray-800/50">
+                        <td colspan="2" class="font-bold text-sm text-primary cursor-pointer"
+                            (click)="toggleGroupView(group)">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 inline-block mr-1"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                            {{ group.label }}
+                        </td>
+                        <td colspan="4" class="text-right text-xs text-gray-400">
+                            {{ group.pages.length }} pages
+                        </td>
+                    </tr>
+                    <!-- Page Rows -->
+                    <tr *ngFor="let page of group.pages; let pi = index" class="hover:bg-primary/5">
+                        <td class="text-gray-400 text-xs">{{ pi + 1 }}</td>
+                        <td class="pl-8">
+                            <span class="text-sm">{{ page.label }}</span>
+                            <span class="text-xs text-gray-400 ml-2">({{ page.key }})</span>
+                        </td>
+                        <!-- View Toggle -->
+                        <td class="text-center">
+                            <label class="relative inline-flex items-center cursor-pointer"
+                                [class.opacity-50]="selectedRole === 'superroot'">
+                                <input type="checkbox" class="sr-only peer" [checked]="getPermission(page.key, 'view')"
+                                    (change)="togglePermission(page.key, 'view')"
+                                    [disabled]="selectedRole === 'superroot'" />
+                                <div
+                                    class="w-9 h-5 bg-gray-200 dark:bg-[#253b5c] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-info">
+                                </div>
+                            </label>
+                        </td>
+                        <!-- Create Toggle -->
+                        <td class="text-center">
+                            <label class="relative inline-flex items-center cursor-pointer"
+                                [class.opacity-50]="selectedRole === 'superroot'">
+                                <input type="checkbox" class="sr-only peer"
+                                    [checked]="getPermission(page.key, 'create')"
+                                    (change)="togglePermission(page.key, 'create')"
+                                    [disabled]="selectedRole === 'superroot'" />
+                                <div
+                                    class="w-9 h-5 bg-gray-200 dark:bg-[#253b5c] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-success">
+                                </div>
+                            </label>
+                        </td>
+                        <!-- Edit Toggle -->
+                        <td class="text-center">
+                            <label class="relative inline-flex items-center cursor-pointer"
+                                [class.opacity-50]="selectedRole === 'superroot'">
+                                <input type="checkbox" class="sr-only peer" [checked]="getPermission(page.key, 'edit')"
+                                    (change)="togglePermission(page.key, 'edit')"
+                                    [disabled]="selectedRole === 'superroot'" />
+                                <div
+                                    class="w-9 h-5 bg-gray-200 dark:bg-[#253b5c] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-warning">
+                                </div>
+                            </label>
+                        </td>
+                        <!-- Delete Toggle -->
+                        <td class="text-center">
+                            <label class="relative inline-flex items-center cursor-pointer"
+                                [class.opacity-50]="selectedRole === 'superroot'">
+                                <input type="checkbox" class="sr-only peer"
+                                    [checked]="getPermission(page.key, 'delete')"
+                                    (change)="togglePermission(page.key, 'delete')"
+                                    [disabled]="selectedRole === 'superroot'" />
+                                <div
+                                    class="w-9 h-5 bg-gray-200 dark:bg-[#253b5c] rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-danger">
+                                </div>
+                            </label>
+                        </td>
+                    </tr>
+                </ng-container>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Save Button -->
+    <div class="flex justify-end mt-6" *ngIf="selectedRole !== 'superroot'">
+        <button type="button" class="btn btn-primary" (click)="savePermissions()" [disabled]="isSaving || !hasChanges">
+            <svg *ngIf="isSaving" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
+                fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+            </svg>
+            {{ isSaving ? 'Saving...' : hasChanges ? 'Save Changes' : 'No Changes' }}
+        </button>
+    </div>
+</div>

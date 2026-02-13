@@ -155,15 +155,6 @@ export class Sip3rdPartyComponent implements OnInit {
         this.resetForm();
     }
 
-    generateRandomSecret(length = 10): string {
-        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-        let retVal = '';
-        for (let i = 0, n = charset.length; i < length; ++i) {
-            retVal += charset.charAt(Math.floor(Math.random() * n));
-        }
-        return retVal;
-    }
-
     resetForm() {
         this.formData = {
             call_server_id: null,
@@ -173,7 +164,7 @@ export class Sip3rdPartyComponent implements OnInit {
             channel_count: 1,
             trunk_id: null,
             description: null,
-            secret: this.generateRandomSecret(),
+            secret: null,
             is_active: true,
         };
     }

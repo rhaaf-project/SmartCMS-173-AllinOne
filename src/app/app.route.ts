@@ -143,8 +143,9 @@ export const routes: Routes = [
             },
             {
                 path: 'cms-admin/policy',
-                loadComponent: () => import('./cms-admin/cms-na/cms-na').then((d) => d.CMSNAComponent),
-                data: { title: 'CMS Policy | SmartUCX' }
+                loadComponent: () => import('./cms-admin/policy-privilege').then((d) => d.PolicyPrivilegeComponent),
+                data: { title: 'Policy & Privilege | SmartUCX', pageKey: 'cms_admin.policy_privilege' },
+                canActivate: [AuthGuard],
             },
         ],
     },

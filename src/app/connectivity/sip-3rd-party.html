@@ -111,7 +111,8 @@
                 (click)="$event.stopPropagation()" [@toggleAnimation]>
                 <div class="flex items-center justify-between px-5 py-4 bg-[#1a2941] rounded-t-md">
                     <h5 class="text-lg font-bold">
-                        {{ modalMode === 'create' ? 'Create Line' : modalMode === 'edit' ? 'Edit Line' : 'View Line' }}
+                        {{ modalMode === 'create' ? 'Create SIP/3rd Party Line' : modalMode === 'edit' ? 'Edit SIP/3rd
+                        Party Line' : 'View SIP/3rd Party Line' }}
                     </h5>
                     <button type="button" class="text-white-dark hover:text-dark" (click)="closeModal()">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
