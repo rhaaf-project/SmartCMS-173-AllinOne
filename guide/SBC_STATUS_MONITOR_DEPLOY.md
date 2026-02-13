@@ -1,60 +1,58 @@
-# ⚠️ SBC STATUS MONITOR — CRITICAL DEPLOYMENT GUIDE
+# SBC STATUS MONITOR — DEPLOYMENT GUIDE
 
 > **READ THIS BEFORE TOUCHING `api.php` sbc-status ENDPOINT OR DEPLOYING!**
 
-## Architecture: TWO DIFFERENT ENVIRONMENTS
+## Architecture: UNIFIED AMI APPROACH
+
+Both environments use the **same** `api.php` code for SBC Status Monitor.
+The `sbc-status/{id}` endpoint connects to Asterisk via **AMI (fsockopen)** on port **5038**.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  171 + 172 (SEPARATED)                                      │
-│                                                             │
-│  171 (CMS + MariaDB)  ──── AMI TCP:5038 ────▶  172 (PBX)   │
-│                                                             │
-│  api.php uses: fsockopen() to AMI on 172                    │
+│  CMS (171) ──── AMI TCP:5038 ────▶ PBX (172)                │
+│  PBX host: from call_servers table                          │
 │  Repo: SmartCMS-Angular-171                                 │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │  173 (ALL-IN-ONE)                                           │
-│                                                             │
-│  173 (CMS + MariaDB + PBX in Docker)                        │
-│                                                             │
-│  api.php uses: docker exec asterisk asterisk -rx "..."      │
+│  CMS ──── AMI TCP:5038 ────▶ PBX (Docker, host network)    │
+│  PBX host: from call_servers table (127.0.0.1 or localhost) │
 │  Repo: SmartCMS-173-AllinOne                                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## ❌ THE #1 MISTAKE TO AVOID
+## ✅ api.php sbc-status IS NOW IDENTICAL ON BOTH ENVIRONMENTS
 
-**NEVER copy `api.php` from one environment to the other without changing the `sbc-status` endpoint!**
+| File | Same across 171 & 173? |
+|------|----------------------|
+| `api.php` sbc-status section | ✅ YES — both use AMI |
+| `sbc-status-monitor.html` | ✅ YES |
+| `sbc-status-monitor.ts` | ✅ YES |
+| `api.php` DB credentials | ❌ NO — 171 uses `root/''`, 173 uses `asterisk/Maja1234!` |
 
-The `sbc-status/{id}` endpoint in `api.php` is **DIFFERENT** between 171 and 173:
+## AMI Credentials
 
-| File | 171 api.php | 173 api.php |
-|------|------------|------------|
-| **Method** | AMI via `fsockopen()` to PBX host:5038 | `exec('docker exec asterisk ...')` |
-| **PBX location** | Remote server 172 | Local Docker container |
-| **Endpoint code section** | `// SBC Status Monitor - Live PJSIP Channels via AMI` | `// SBC Status Monitor - Live PJSIP Channels endpoint` |
-
-## ✅ WHAT IS SAFE TO COPY BETWEEN ENVIRONMENTS
-
-| File | Same? | Notes |
-|------|-------|-------|
-| `src/app/connectivity/sbc-status-monitor.html` | ✅ YES | UI is identical |
-| `src/app/connectivity/sbc-status-monitor.ts` | ✅ YES | Frontend logic identical |
-| `api.php` (sbc-status section) | ❌ **NO** | **DIFFERENT per environment** |
-| `api.php` (everything else) | ✅ YES | Same (but fix DB creds on 173) |
+- Port: **5038**
+- Username: **admin**
+- Password: **admin1234**
+- Config file: `/etc/asterisk/manager.conf` (inside Docker on 173)
 
 ## 173 Extra Steps After Deploying api.php
 
-1. **Fix DB credentials**: local uses `root/''`, server 173 uses `asterisk/Maja1234!`
-2. Use `fix_db_creds.py` script (scp + run via python3)
-3. Restart PHP server: `fuser -k 8000/tcp; nohup php -S 127.0.0.1:8000 api.php &`
+> [!CAUTION]
+> When uploading api.php to 173, you MUST fix DB credentials afterwards:
 
-## AMI Credentials (171→172)
+1. Upload `fix_db_creds.py` and run it (changes `root/''` → `asterisk/Maja1234!`)
+2. Restart PHP server: `fuser -k 8000/tcp; nohup php -S 127.0.0.1:8000 api.php &`
 
-- Host: from `call_servers` table `host` column
-- Port: 5038
-- Username: `admin`
-- Password: `admin`
-- These may need updating if PBX AMI config changes
+## Call Server Host Configuration
+
+The sbc-status endpoint reads the PBX host from the `call_servers` table.
+Make sure the call_server entry has the correct host:
+
+| Environment | call_servers.host should be |
+|------------|---------------------------|
+| 171→172 | `103.154.80.172` (PBX IP) |
+| 173 | `127.0.0.1` or `localhost` |
