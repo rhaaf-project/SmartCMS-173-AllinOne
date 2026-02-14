@@ -113,7 +113,6 @@ export class SBCStatusMonitorComponent implements OnInit, OnDestroy {
     }
 
     toggleAutoRefresh() {
-        this.autoRefreshEnabled = !this.autoRefreshEnabled;
         this.setupAutoRefresh();
     }
 
