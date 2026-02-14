@@ -37,7 +37,7 @@ CREATE TABLE `activity_logs` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `activity_logs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `cms_users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=73 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=84 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -107,7 +107,16 @@ INSERT INTO `activity_logs` VALUES
 (67,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','::1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-04 16:05:37'),
 (68,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','::1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-04 16:48:31'),
 (69,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','::1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-05 05:49:41'),
-(70,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-05 08:05:26');
+(70,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-05 08:05:26'),
+(73,NULL,'login_failed','auth',NULL,NULL,'{\"email\":\"admin@smartx.local\"}','127.0.0.1','Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-10 05:41:28'),
+(74,NULL,'login_failed','auth',NULL,NULL,'{\"email\":\"admin@smartx.local\"}','127.0.0.1','Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-10 05:41:36'),
+(77,NULL,'login_failed','auth',NULL,NULL,'{\"email\":\"root@smartcms.local\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-11 20:50:04'),
+(78,NULL,'login_failed','auth',NULL,NULL,'{\"email\":\"root@smartcms.local\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-11 20:50:08'),
+(79,NULL,'login_failed','auth',NULL,NULL,'{\"email\":\"root@smartcms.local\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-12 10:13:15'),
+(80,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-12 10:18:35'),
+(81,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-13 11:21:26'),
+(82,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-13 11:34:44'),
+(83,1,'login','auth',1,NULL,'{\"email\":\"root@smartcms.local\",\"name\":\"Root Admin\"}','127.0.0.1','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36','2026-02-13 13:40:26');
 /*!40000 ALTER TABLE `activity_logs` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -240,7 +249,7 @@ LOCK TABLES `branches` WRITE;
 /*!40000 ALTER TABLE `branches` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `branches` VALUES
-(1,2,2,3,8,'KAI Cimahi','KAI CMH 01','Indonesia','Jawa Barat','Cimahi','Cimahi Tengah','CImahi Jawa Barat','','','',1,'2026-01-30 09:56:59','2026-02-04 16:17:39');
+(1,NULL,NULL,3,8,'KAI Cimahi','KAI CMH 01','Indonesia','Jawa Barat','Cimahi','Cimahi Tengah','CImahi Jawa Barat','','','',1,'2026-01-30 09:56:59','2026-02-04 16:17:39');
 /*!40000 ALTER TABLE `branches` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -352,10 +361,14 @@ CREATE TABLE `call_servers` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `type` text DEFAULT NULL,
+  `head_office` text DEFAULT NULL,
+  `ext_count` text DEFAULT NULL,
+  `trunks_count` text DEFAULT NULL,
+  `lines_count` text DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `head_office_id` (`head_office_id`),
   CONSTRAINT `call_servers_ibfk_1` FOREIGN KEY (`head_office_id`) REFERENCES `head_offices` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -366,10 +379,8 @@ LOCK TABLES `call_servers` WRITE;
 /*!40000 ALTER TABLE `call_servers` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `call_servers` VALUES
-(3,2,'SmartUCX-2-KAI','103.154.81.102',5060,NULL,1,'2026-01-30 17:53:31','2026-01-30 17:59:39',NULL),
-(4,2,'SmartUCX-3-KAI','103.154.81.103',5060,NULL,1,'2026-01-30 17:53:43','2026-01-30 17:59:48',NULL),
-(8,3,'Telkom','192.168.0.10',5060,NULL,1,'2026-02-02 11:16:29','2026-02-04 01:01:03','sbc'),
-(9,1,'Asterisk-Node-1','103.154.80.173',5060,NULL,1,'2026-02-09 13:57:27','2026-02-09 13:57:27',NULL);
+(10,4,'CS1-SmartJKT','103.154.80.173',5060,NULL,1,'2026-02-13 20:06:04','2026-02-13 20:06:04',NULL,NULL,NULL,NULL,NULL),
+(11,NULL,'SBC1-HO-JKT','103.154.80.173',5060,NULL,1,'2026-02-13 20:06:35','2026-02-13 20:06:35','sbc',NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `call_servers` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -408,12 +419,6 @@ CREATE TABLE `cas` (
 LOCK TABLES `cas` WRITE;
 /*!40000 ALTER TABLE `cas` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `cas` VALUES
-(1,3,'CAS E1 Port 1','CAS-001',30,'E1',NULL,1,1,NULL,NULL,0,1,NULL,NULL),
-(2,3,'CAS E1 Port 2','CAS-002',30,'E1',NULL,1,2,NULL,NULL,0,1,NULL,NULL),
-(3,3,'CAS E1 Port 3','CAS-003',30,'E1',NULL,2,1,NULL,NULL,0,1,NULL,NULL),
-(4,3,'CAS PRI Link 1','CAS-004',23,'PRI',NULL,1,1,NULL,NULL,0,1,NULL,NULL),
-(5,3,'CAS PRI Link 2','CAS-005',23,'PRI',NULL,2,1,NULL,NULL,0,1,NULL,NULL);
 /*!40000 ALTER TABLE `cas` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -623,7 +628,7 @@ CREATE TABLE `customers` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -634,9 +639,7 @@ LOCK TABLES `customers` WRITE;
 /*!40000 ALTER TABLE `customers` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `customers` VALUES
-(1,'PT Smart Infinite Prosperity','SIP','Joni Me Ow','joni@smart.com','02150877432','Jakarta, Indonesia',1,'2026-01-29 17:28:18','2026-01-29 17:28:18'),
-(2,'PT KAI','KAI IND','Kaimanu','kaimanu@kai,id','123456','Gambir Jakarta',1,'2026-01-29 18:00:14','2026-01-29 18:00:14'),
-(3,'PT Garuda','GARUDA IND','Garuda','garuda@garuda.id','123456','Monas Jakarta',1,'2026-01-31 14:03:41','2026-01-31 14:03:41');
+(4,'SmartInfinite','Smart','Jony Meow','jony.meow@intecvr.com','02150877477','Jakarta, Indonesia',1,'2026-02-13 20:03:58','2026-02-13 20:03:58');
 /*!40000 ALTER TABLE `customers` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -687,6 +690,8 @@ DROP TABLE IF EXISTS `device_3rd_parties`;
 CREATE TABLE `device_3rd_parties` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
+  `username` varchar(50) DEFAULT NULL,
+  `password` varchar(100) DEFAULT NULL,
   `mac_address` varchar(17) DEFAULT NULL,
   `ip_address` varchar(15) DEFAULT NULL,
   `device_type` varchar(50) DEFAULT 'ip_phone',
@@ -708,11 +713,11 @@ LOCK TABLES `device_3rd_parties` WRITE;
 /*!40000 ALTER TABLE `device_3rd_parties` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `device_3rd_parties` VALUES
-(1,'Cisco IP Phone 7821','00:1B:54:AA:BB:01','192.168.100.101','ip_phone','Cisco','7821',NULL,1,NULL,NULL),
-(2,'Yealink T46S','80:5E:C0:CC:DD:02','192.168.100.102','ip_phone','Yealink','T46S',NULL,1,NULL,NULL),
-(3,'Grandstream GXP2170','00:0B:82:EE:FF:03','192.168.100.103','ip_phone','Grandstream','GXP2170',NULL,1,NULL,NULL),
-(4,'Polycom VVX 450','64:16:7F:11:22:04','192.168.100.104','ip_phone','Polycom','VVX 450',NULL,1,NULL,NULL),
-(5,'Fanvil X6U','AC:D1:B8:33:44:05','192.168.100.105','ip_phone','Fanvil','X6U',NULL,1,NULL,NULL);
+(1,'Cisco IP Phone 7821','Cisco IP Phone 7821','Maja1234!','00:1B:54:AA:BB:01','192.168.100.101','ip_phone','Cisco','7821',NULL,1,NULL,NULL),
+(2,'Yealink T46S','Yealink T46S','Maja1234!','80:5E:C0:CC:DD:02','192.168.100.102','ip_phone','Yealink','T46S',NULL,1,NULL,NULL),
+(3,'Grandstream GXP2170','Grandstream GXP2170','Maja1234!','00:0B:82:EE:FF:03','192.168.100.103','ip_phone','Grandstream','GXP2170',NULL,1,NULL,NULL),
+(4,'Polycom VVX 450','Polycom VVX 450','Maja1234!','64:16:7F:11:22:04','192.168.100.104','ip_phone','Polycom','VVX 450',NULL,1,NULL,NULL),
+(5,'Fanvil X6U','Fanvil X6U','Maja1234!','AC:D1:B8:33:44:05','192.168.100.105','ip_phone','Fanvil','X6U',NULL,1,NULL,NULL);
 /*!40000 ALTER TABLE `device_3rd_parties` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -749,17 +754,6 @@ CREATE TABLE `extensions` (
 LOCK TABLES `extensions` WRITE;
 /*!40000 ALTER TABLE `extensions` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `extensions` VALUES
-(1,3,'7001','Ext 7001 - SIP','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(2,3,'7002','Ext 7002 - SIP','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(3,3,'8001','Ext 8001 - Line','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(4,3,'8002','Ext 8002 - Line','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(5,3,'8101','Ext 8101 - Extension','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(6,3,'8102','Ext 8102 - Extension','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(7,3,'8201','Ext 8201 - VPW','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(8,3,'8202','Ext 8202 - VPW','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(9,3,'8301','Ext 8301 - CAS','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39'),
-(10,3,'8302','Ext 8302 - CAS','1234',NULL,NULL,30,1,'2026-02-04 11:38:39','2026-02-04 11:38:39');
 /*!40000 ALTER TABLE `extensions` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -898,7 +892,7 @@ CREATE TABLE `head_offices` (
   PRIMARY KEY (`id`),
   KEY `customer_id` (`customer_id`),
   CONSTRAINT `head_offices_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -909,9 +903,7 @@ LOCK TABLES `head_offices` WRITE;
 /*!40000 ALTER TABLE `head_offices` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `head_offices` VALUES
-(1,1,'HO Jakarta','HO-JKT','ha',NULL,NULL,'Jakarta',NULL,NULL,NULL,NULL,NULL,1,'2026-01-29 17:28:18','2026-01-29 17:28:18',NULL,0,NULL),
-(2,2,'HO KAI Indonesia','KAI IND 01','ha','Indonesia','DKI','Jakarta','Jakarta Pusat','Gambir','','','',1,'2026-01-29 18:04:43','2026-01-30 18:00:46',6,0,'[{\"call_server_id\":2,\"is_enabled\":true},{\"call_server_id\":3,\"is_enabled\":true},{\"call_server_id\":4,\"is_enabled\":true}]'),
-(3,3,'HO Garuda Indonesia','GAR IND 01','basic','Indonesia','DKI','Jakarta','Jakarta Pusat','Monas','','','',1,'2026-01-31 14:04:48','2026-01-31 14:04:48',1,0,'[{\"call_server_id\":6,\"is_enabled\":true}]');
+(4,4,'HO Jakarta','SmartHO-JKT','basic','Indonesia','','','','','','','',1,'2026-02-13 20:05:08','2026-02-13 20:05:08',NULL,0,'[{\"call_server_id\":null,\"is_enabled\":true}]');
 /*!40000 ALTER TABLE `head_offices` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -1019,8 +1011,6 @@ CREATE TABLE `intercoms` (
 LOCK TABLES `intercoms` WRITE;
 /*!40000 ALTER TABLE `intercoms` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `intercoms` VALUES
-(1,4,1,'kaimanu','6001',NULL,1,NULL,NULL);
 /*!40000 ALTER TABLE `intercoms` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -1190,19 +1180,6 @@ CREATE TABLE `lines` (
 LOCK TABLES `lines` WRITE;
 /*!40000 ALTER TABLE `lines` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `lines` VALUES
-(1,8,'kaimanu','110011','sip',1,NULL,NULL,'1234',1,NULL,NULL),
-(2,3,'kaimanu','110012','sip',1,NULL,NULL,'1234',1,NULL,NULL),
-(3,4,'kaimanu','110013','sip',1,NULL,NULL,'1234',1,NULL,NULL),
-(4,3,'kaimanu','110021','sip',1,NULL,NULL,'1234',1,NULL,NULL),
-(5,3,'kaimanu','110022','sip',1,NULL,NULL,'1234',1,NULL,NULL),
-(6,4,'kaimanu','110023','sip',1,NULL,NULL,'1234',1,NULL,NULL),
-(7,8,'Smartono','100011','sip',1,NULL,NULL,'1234',1,NULL,NULL),
-(8,3,'Line Jakarta-01','021-5001','sip',4,NULL,NULL,NULL,1,NULL,NULL),
-(9,3,'Line Jakarta-02','021-5002','sip',4,NULL,NULL,NULL,1,NULL,NULL),
-(10,3,'Line Bandung-01','022-6001','sip',2,NULL,NULL,NULL,1,NULL,NULL),
-(11,3,'Line Surabaya-01','031-7001','sip',2,NULL,NULL,NULL,1,NULL,NULL),
-(12,4,'Line Medan-01','061-8001','sip',2,NULL,NULL,NULL,1,NULL,NULL);
 /*!40000 ALTER TABLE `lines` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -1532,15 +1509,63 @@ CREATE TABLE `private_wires` (
 LOCK TABLES `private_wires` WRITE;
 /*!40000 ALTER TABLE `private_wires` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `private_wires` VALUES
-(1,3,'VPW HQ-Branch1','9001','Branch Cimahi',NULL,1,NULL,NULL),
-(2,3,'VPW HQ-Branch2','9002','Branch Bandung',NULL,1,NULL,NULL),
-(3,3,'VPW HQ-Branch3','9003','Branch Surabaya',NULL,1,NULL,NULL),
-(4,3,'VPW Regional-01','9004','Regional West',NULL,1,NULL,NULL),
-(5,3,'VPW Regional-02','9005','Regional East',NULL,1,NULL,NULL);
 /*!40000 ALTER TABLE `private_wires` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
+
+--
+-- Temporary table structure for view `ps_aors`
+--
+
+DROP TABLE IF EXISTS `ps_aors`;
+/*!50001 DROP VIEW IF EXISTS `ps_aors`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8mb4;
+/*!50001 CREATE VIEW `ps_aors` AS SELECT
+ 1 AS `id`,
+  1 AS `max_contacts`,
+  1 AS `remove_existing` */;
+SET character_set_client = @saved_cs_client;
+
+--
+-- Temporary table structure for view `ps_auths`
+--
+
+DROP TABLE IF EXISTS `ps_auths`;
+/*!50001 DROP VIEW IF EXISTS `ps_auths`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8mb4;
+/*!50001 CREATE VIEW `ps_auths` AS SELECT
+ 1 AS `id`,
+  1 AS `auth_type`,
+  1 AS `username`,
+  1 AS `password` */;
+SET character_set_client = @saved_cs_client;
+
+--
+-- Temporary table structure for view `ps_endpoints`
+--
+
+DROP TABLE IF EXISTS `ps_endpoints`;
+/*!50001 DROP VIEW IF EXISTS `ps_endpoints`*/;
+SET @saved_cs_client     = @@character_set_client;
+SET character_set_client = utf8mb4;
+/*!50001 CREATE VIEW `ps_endpoints` AS SELECT
+ 1 AS `id`,
+  1 AS `transport`,
+  1 AS `aors`,
+  1 AS `auth`,
+  1 AS `context`,
+  1 AS `disallow`,
+  1 AS `allow`,
+  1 AS `direct_media`,
+  1 AS `ice_support`,
+  1 AS `use_avpf`,
+  1 AS `force_rport`,
+  1 AS `rewrite_contact`,
+  1 AS `rtp_symmetric`,
+  1 AS `media_encryption` */;
+SET character_set_client = @saved_cs_client;
 
 --
 -- Table structure for table `recording_servers`
@@ -1678,12 +1703,6 @@ CREATE TABLE `sbc_connection_status` (
 LOCK TABLES `sbc_connection_status` WRITE;
 /*!40000 ALTER TABLE `sbc_connection_status` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `sbc_connection_status` VALUES
-(1,8,'Telkom-ITSP-Primary','ITSP','sip.telkom.net.id:5060','telkom_trunk_01','REGISTERED','OK',18,5,30,'2026-02-04 20:49:00','2026-02-04 13:49:02','2026-02-04 13:49:02'),
-(2,8,'Indosat-DID-Trunk','ITSP','trunk.indosat.net:5060','indosat_did_main','REGISTERED','LAGGED',165,2,20,'2026-02-04 20:48:27','2026-02-04 13:49:02','2026-02-04 13:49:02'),
-(3,8,'IPG-CallServer-HQ','IP_GROUP','10.10.1.50:5060',NULL,'NOT_REGISTERED','OK',5,12,100,'2026-02-04 20:49:01','2026-02-04 13:49:02','2026-02-04 13:49:02'),
-(4,8,'IPG-Branch-Bandung','IP_GROUP','10.10.2.50:5060',NULL,'NOT_REGISTERED','UNREACHABLE',NULL,0,50,'2026-02-04 20:41:02','2026-02-04 13:49:02','2026-02-04 13:49:02'),
-(5,8,'TG-PSTN-Outbound','TRUNK_GROUP','10.10.1.100:5060',NULL,'NOT_REGISTERED','OK',12,8,60,'2026-02-04 20:48:57','2026-02-04 13:49:02','2026-02-04 13:49:02');
 /*!40000 ALTER TABLE `sbc_connection_status` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -1727,7 +1746,7 @@ LOCK TABLES `sbc_routes` WRITE;
 /*!40000 ALTER TABLE `sbc_routes` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `sbc_routes` VALUES
-(2,8,'S-test','0212222',NULL,0,1,5,NULL,8,'D-test','','700',0,1,4,NULL,NULL,NULL);
+(2,11,'S-test','','10091',0,1,4,NULL,11,'D-test','','',0,1,5,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `sbc_routes` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -1771,8 +1790,8 @@ LOCK TABLES `sbcs` WRITE;
 /*!40000 ALTER TABLE `sbcs` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `sbcs` VALUES
-(4,8,'ConnectionTelkom','13.44.13.4',5060,'02150877477',2,'udp','from-pstn','ulaw,alaw','auto','none',NULL,NULL,1,60,0,NULL,NULL),
-(5,8,'ConnectionPBX','13.44.13.26',5060,'02150877477',2,'udp','from-pstn','ulaw,alaw','auto','none',NULL,NULL,1,60,0,NULL,NULL);
+(4,11,'ConnectionTelkom','13.44.13.4',5060,'',2,'udp','from-pstn','ulaw,alaw','auto','none',NULL,NULL,1,60,0,NULL,NULL),
+(5,11,'ConnectionPBX','103.154.80.166',3160,'',2,'udp','from-pstn','ulaw,alaw','auto','none',NULL,NULL,1,60,0,NULL,NULL);
 /*!40000 ALTER TABLE `sbcs` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -1848,9 +1867,6 @@ CREATE TABLE `static_routes` (
 LOCK TABLES `static_routes` WRITE;
 /*!40000 ALTER TABLE `static_routes` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `static_routes` VALUES
-(1,NULL,'','','192.168.100.1','',NULL,NULL,NULL,'111','eth0','100','call_server',4,1),
-(2,NULL,'','','192.168.100.1','',NULL,NULL,NULL,'222','eth0','100','sbc',8,1);
 /*!40000 ALTER TABLE `static_routes` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -1896,8 +1912,8 @@ LOCK TABLES `sub_branches` WRITE;
 /*!40000 ALTER TABLE `sub_branches` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `sub_branches` VALUES
-(1,2,1,4,'KAI Juanda Cimahi','KAI CMH 011','Indonesia','Jawa Barat','Cimahi','Cimahi Tengah','Jl. Juanda Cimahi','','','',1,'2026-01-30 10:05:14','2026-01-30 18:01:35'),
-(2,2,1,8,'KAI Juanda Cimahi 2','KAI CMH 0112','Indonesia','Jawa Barat','Cimahi','Cimahi Tengah','Jl. Juanda Cimahi','','','',1,'2026-02-04 16:21:23','2026-02-04 16:21:39');
+(1,NULL,1,4,'KAI Juanda Cimahi','KAI CMH 011','Indonesia','Jawa Barat','Cimahi','Cimahi Tengah','Jl. Juanda Cimahi','','','',1,'2026-01-30 10:05:14','2026-01-30 18:01:35'),
+(2,NULL,1,8,'KAI Juanda Cimahi 2','KAI CMH 0112','Indonesia','Jawa Barat','Cimahi','Cimahi Tengah','Jl. Juanda Cimahi','','','',1,'2026-02-04 16:21:23','2026-02-04 16:21:39');
 /*!40000 ALTER TABLE `sub_branches` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -2401,11 +2417,11 @@ LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `users` VALUES
-(1,'Root Admin','root@smartcms.local','user_1769995349_697ffc551c1b3.jpg','$2y$12$GQs.Y2GUJ8r/hhEEFI3Ph.6icAMfx5bVo2fFHSYP61MO8GU6./f/S','admin',1,'2026-02-05 08:05:26','2026-02-01 15:37:47','2026-02-09 15:53:38'),
+(1,'Root Admin','root@smartcms.local','user_1769995349_697ffc551c1b3.jpg','$2y$12$GQs.Y2GUJ8r/hhEEFI3Ph.6icAMfx5bVo2fFHSYP61MO8GU6./f/S','admin',1,'2026-02-13 13:40:26','2026-02-01 15:37:47','2026-02-13 13:40:26'),
 (2,'CMS Admin','cmsadmin@smartx.local',NULL,'$2y$12$js2WyAmlxkii9qPRGwlwwe37.kMoI9klT4WMIRF4XQuURJ.QU.Juy','admin',1,'2026-02-01 18:25:18','2026-02-01 15:37:47','2026-02-09 15:53:39'),
 (3,'Operator User','operator@smartx.local',NULL,'\\.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','operator',1,NULL,'2026-02-01 15:37:47','2026-02-01 15:37:47'),
-(4,'Admin User','admin@smartx.local','user_1770074198_6981305604095.jpg','$2y$12$JMjf8l7HQPrqIlkFsaD.oOck3GhT6h76ZLTa4toB8rkwe4kBuL1Fy','admin',1,'2026-02-04 11:26:32','2026-02-01 18:12:14','2026-02-09 15:53:38'),
-(5,'Super Admin','superadmin@smartcms.local',NULL,'$2y$12$EhZE3y3Kfd/2zOAFhi3a4.X9.kwrGRDNuWskeRC7IbrzmF6nB0Obu','admin',1,'2026-02-09 15:39:41','2026-02-09 09:13:27','2026-02-09 15:53:39');
+(4,'Admin User','admin@smartx.local','user_1770074198_6981305604095.jpg','$2y$12$JMjf8l7HQPrqIlkFsaD.oOck3GhT6h76ZLTa4toB8rkwe4kBuL1Fy','admin',1,'2026-02-10 05:41:45','2026-02-01 18:12:14','2026-02-10 05:41:45'),
+(5,'Super Admin','superadmin@smartcms.local',NULL,'$2y$12$EhZE3y3Kfd/2zOAFhi3a4.X9.kwrGRDNuWskeRC7IbrzmF6nB0Obu','admin',1,'2026-02-10 06:14:18','2026-02-09 09:13:27','2026-02-10 06:14:18');
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -2446,6 +2462,60 @@ set autocommit=0;
 /*!40000 ALTER TABLE `vpws` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
+
+--
+-- Final view structure for view `ps_aors`
+--
+
+/*!50001 DROP VIEW IF EXISTS `ps_aors`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `ps_aors` AS select `extensions`.`extension` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `extensions` where `extensions`.`is_active` = 1 union all select `vpws`.`vpw_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `vpws` where `vpws`.`is_active` = 1 union all select `cas`.`cas_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `cas` where `cas`.`is_active` = 1 union all select `lines`.`line_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `lines` where `lines`.`is_active` = 1 union all select `device_3rd_parties`.`name` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `device_3rd_parties` where `device_3rd_parties`.`is_active` = 1 */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `ps_auths`
+--
+
+/*!50001 DROP VIEW IF EXISTS `ps_auths`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `ps_auths` AS select `extensions`.`extension` AS `id`,'userpass' AS `auth_type`,`extensions`.`extension` AS `username`,'Maja1234!' AS `password` from `extensions` where `extensions`.`is_active` = 1 union all select `vpws`.`vpw_number` AS `id`,'userpass' AS `auth_type`,`vpws`.`vpw_number` AS `username`,'Maja1234!' AS `password` from `vpws` where `vpws`.`is_active` = 1 union all select `cas`.`cas_number` AS `id`,'userpass' AS `auth_type`,`cas`.`cas_number` AS `username`,'Maja1234!' AS `password` from `cas` where `cas`.`is_active` = 1 union all select `lines`.`line_number` AS `id`,'userpass' AS `auth_type`,`lines`.`line_number` AS `username`,'Maja1234!' AS `password` from `lines` where `lines`.`is_active` = 1 union all select `device_3rd_parties`.`name` AS `id`,'userpass' AS `auth_type`,`device_3rd_parties`.`name` AS `username`,'Maja1234!' AS `password` from `device_3rd_parties` where `device_3rd_parties`.`is_active` = 1 */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
+
+--
+-- Final view structure for view `ps_endpoints`
+--
+
+/*!50001 DROP VIEW IF EXISTS `ps_endpoints`*/;
+/*!50001 SET @saved_cs_client          = @@character_set_client */;
+/*!50001 SET @saved_cs_results         = @@character_set_results */;
+/*!50001 SET @saved_col_connection     = @@collation_connection */;
+/*!50001 SET character_set_client      = utf8mb4 */;
+/*!50001 SET character_set_results     = utf8mb4 */;
+/*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
+/*!50001 CREATE ALGORITHM=UNDEFINED */
+/*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
+/*!50001 VIEW `ps_endpoints` AS select `extensions`.`extension` AS `id`,'transport-wss' AS `transport`,`extensions`.`extension` AS `aors`,`extensions`.`extension` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `extensions` where `extensions`.`is_active` = 1 union all select `vpws`.`vpw_number` AS `id`,'transport-wss' AS `transport`,`vpws`.`vpw_number` AS `aors`,`vpws`.`vpw_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `vpws` where `vpws`.`is_active` = 1 union all select `cas`.`cas_number` AS `id`,'transport-wss' AS `transport`,`cas`.`cas_number` AS `aors`,`cas`.`cas_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `cas` where `cas`.`is_active` = 1 union all select `lines`.`line_number` AS `id`,'transport-wss' AS `transport`,`lines`.`line_number` AS `aors`,`lines`.`line_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `lines` where `lines`.`is_active` = 1 union all select `device_3rd_parties`.`name` AS `id`,'transport-udp' AS `transport`,`device_3rd_parties`.`name` AS `aors`,`device_3rd_parties`.`name` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,gsm' AS `allow`,'no' AS `direct_media`,'no' AS `ice_support`,'no' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'no' AS `media_encryption` from `device_3rd_parties` where `device_3rd_parties`.`is_active` = 1 */;
+/*!50001 SET character_set_client      = @saved_cs_client */;
+/*!50001 SET character_set_results     = @saved_cs_results */;
+/*!50001 SET collation_connection      = @saved_col_connection */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -2456,4 +2526,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-02-09 11:14:14
+-- Dump completed on 2026-02-14  4:10:40
