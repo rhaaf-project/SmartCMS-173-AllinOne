@@ -356,19 +356,24 @@ CREATE TABLE `call_servers` (
   `name` varchar(255) NOT NULL,
   `host` varchar(255) NOT NULL,
   `port` int(11) DEFAULT 5060,
+  `ami_port` int(11) DEFAULT 5038,
+  `ami_username` varchar(100) DEFAULT 'smartcms',
+  `ami_secret` varchar(255) DEFAULT NULL,
+  `ari_port` int(11) DEFAULT 8088,
+  `ari_username` varchar(100) DEFAULT 'smartcms',
+  `ari_secret` varchar(255) DEFAULT NULL,
+  `transport_udp_port` int(11) DEFAULT 5060,
+  `transport_wss_port` int(11) DEFAULT 8089,
+  `deployment_type` varchar(50) DEFAULT 'local',
   `description` text DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `type` text DEFAULT NULL,
-  `head_office` text DEFAULT NULL,
-  `ext_count` text DEFAULT NULL,
-  `trunks_count` text DEFAULT NULL,
-  `lines_count` text DEFAULT NULL,
+  `type` varchar(50) DEFAULT 'asterisk',
   PRIMARY KEY (`id`),
   KEY `head_office_id` (`head_office_id`),
   CONSTRAINT `call_servers_ibfk_1` FOREIGN KEY (`head_office_id`) REFERENCES `head_offices` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -379,8 +384,8 @@ LOCK TABLES `call_servers` WRITE;
 /*!40000 ALTER TABLE `call_servers` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `call_servers` VALUES
-(10,4,'CS1-SmartJKT','103.154.80.173',5060,NULL,1,'2026-02-13 20:06:04','2026-02-13 20:06:04',NULL,NULL,NULL,NULL,NULL),
-(11,NULL,'SBC1-HO-JKT','103.154.80.173',5060,NULL,1,'2026-02-13 20:06:35','2026-02-13 20:06:35','sbc',NULL,NULL,NULL,NULL);
+(10,4,'CS1-SmartJKT','103.154.80.173',5060,5038,'smartcms','smartcms_ami_secret_2026',8088,'smartcms','smartcms_ari_secret_2026',5060,8089,'local',NULL,1,'2026-02-13 20:06:04','2026-02-19 13:26:12','asterisk'),
+(11,NULL,'SBC1-HO-JKT','103.154.80.173',5060,5038,'smartcms','smartcms_ami_secret_2026',8088,'smartcms','smartcms_ari_secret_2026',5060,8089,'local',NULL,1,'2026-02-13 20:06:35','2026-02-15 12:39:41','sbc');
 /*!40000 ALTER TABLE `call_servers` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -396,6 +401,7 @@ CREATE TABLE `cas` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `call_server_id` int(11) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
+  `password` varchar(100) DEFAULT 'Maja1234!',
   `cas_number` varchar(50) DEFAULT NULL,
   `channel_number` int(11) DEFAULT NULL,
   `signaling_type` varchar(50) DEFAULT NULL,
@@ -409,7 +415,7 @@ CREATE TABLE `cas` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -510,6 +516,58 @@ UNLOCK TABLES;
 commit;
 
 --
+-- Table structure for table `cms_policies`
+--
+
+DROP TABLE IF EXISTS `cms_policies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cms_policies` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `role` varchar(50) DEFAULT 'admin',
+  `description` text DEFAULT NULL,
+  `can_view_secret_extension` tinyint(1) DEFAULT 0,
+  `can_edit_secret_extension` tinyint(1) DEFAULT 0,
+  `can_edit_name_extension` tinyint(1) DEFAULT 1,
+  `can_view_secret_3rdparty` tinyint(1) DEFAULT 1,
+  `can_edit_secret_3rdparty` tinyint(1) DEFAULT 1,
+  `can_edit_name_3rdparty` tinyint(1) DEFAULT 1,
+  `can_create_extension` tinyint(1) DEFAULT 1,
+  `can_delete_extension` tinyint(1) DEFAULT 1,
+  `can_create_line` tinyint(1) DEFAULT 1,
+  `can_delete_line` tinyint(1) DEFAULT 1,
+  `can_create_vpw` tinyint(1) DEFAULT 1,
+  `can_delete_vpw` tinyint(1) DEFAULT 1,
+  `can_create_cas` tinyint(1) DEFAULT 1,
+  `can_delete_cas` tinyint(1) DEFAULT 1,
+  `can_create_3rdparty` tinyint(1) DEFAULT 1,
+  `can_delete_3rdparty` tinyint(1) DEFAULT 1,
+  `can_manage_trunks` tinyint(1) DEFAULT 1,
+  `can_manage_sbc` tinyint(1) DEFAULT 1,
+  `can_manage_call_servers` tinyint(1) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `cms_policies`
+--
+
+LOCK TABLES `cms_policies` WRITE;
+/*!40000 ALTER TABLE `cms_policies` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `cms_policies` VALUES
+(1,'Super Admin Policy','super_admin',NULL,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,'2026-02-15 11:48:55','2026-02-15 11:48:55'),
+(2,'Admin Policy','admin',NULL,0,0,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,1,'2026-02-15 11:48:55','2026-02-15 17:57:53');
+/*!40000 ALTER TABLE `cms_policies` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `cms_users`
 --
 
@@ -522,13 +580,15 @@ CREATE TABLE `cms_users` (
   `email` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
   `role` enum('admin','operator','viewer') DEFAULT 'viewer',
+  `is_super_admin` tinyint(1) DEFAULT 0,
+  `license_id` int(11) DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `last_login` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -539,7 +599,8 @@ LOCK TABLES `cms_users` WRITE;
 /*!40000 ALTER TABLE `cms_users` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `cms_users` VALUES
-(1,'Administrator','admin@smartcms.local','$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi','admin',1,NULL,'2026-01-29 17:28:18','2026-01-29 17:28:18');
+(1,'Administrator','admin@smartcms.local','$2y$12$NMNpwBeY.YD1IzG/cveqW.BUn1GpK7cS5fL0bQUjZW6z3t0ukWDsq','admin',0,NULL,1,NULL,'2026-01-29 17:28:18','2026-02-15 12:17:15'),
+(2,'Super Administrator','superadmin@smartcms.local','$2y$12$6GGz9nbv.lVYV4HMRS/RHuZtrsvFvr25bM0s.jMsbOlFl2V2kyz26','admin',1,NULL,1,NULL,'2026-02-15 12:17:15','2026-02-15 12:17:15');
 /*!40000 ALTER TABLE `cms_users` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -689,7 +750,9 @@ DROP TABLE IF EXISTS `device_3rd_parties`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `device_3rd_parties` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `call_server_id` int(11) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
+  `extension` varchar(20) DEFAULT NULL,
   `username` varchar(50) DEFAULT NULL,
   `password` varchar(100) DEFAULT NULL,
   `mac_address` varchar(17) DEFAULT NULL,
@@ -702,7 +765,7 @@ CREATE TABLE `device_3rd_parties` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -713,11 +776,8 @@ LOCK TABLES `device_3rd_parties` WRITE;
 /*!40000 ALTER TABLE `device_3rd_parties` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `device_3rd_parties` VALUES
-(1,'Cisco IP Phone 7821','Cisco IP Phone 7821','Maja1234!','00:1B:54:AA:BB:01','192.168.100.101','ip_phone','Cisco','7821',NULL,1,NULL,NULL),
-(2,'Yealink T46S','Yealink T46S','Maja1234!','80:5E:C0:CC:DD:02','192.168.100.102','ip_phone','Yealink','T46S',NULL,1,NULL,NULL),
-(3,'Grandstream GXP2170','Grandstream GXP2170','Maja1234!','00:0B:82:EE:FF:03','192.168.100.103','ip_phone','Grandstream','GXP2170',NULL,1,NULL,NULL),
-(4,'Polycom VVX 450','Polycom VVX 450','Maja1234!','64:16:7F:11:22:04','192.168.100.104','ip_phone','Polycom','VVX 450',NULL,1,NULL,NULL),
-(5,'Fanvil X6U','Fanvil X6U','Maja1234!','AC:D1:B8:33:44:05','192.168.100.105','ip_phone','Fanvil','X6U',NULL,1,NULL,NULL);
+(10,10,'Oura Softphone','2001','2001','Test@2026',NULL,NULL,'ip_phone',NULL,NULL,NULL,1,'2026-02-15 17:49:09','2026-02-15 17:49:09'),
+(12,10,'zoiper','2002','2002','Maja1234!',NULL,NULL,'ip_phone',NULL,NULL,NULL,1,'2026-02-15 18:17:33','2026-02-15 18:17:53');
 /*!40000 ALTER TABLE `device_3rd_parties` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -744,7 +804,7 @@ CREATE TABLE `extensions` (
   PRIMARY KEY (`id`),
   KEY `call_server_id` (`call_server_id`),
   CONSTRAINT `extensions_ibfk_1` FOREIGN KEY (`call_server_id`) REFERENCES `call_servers` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -754,6 +814,8 @@ CREATE TABLE `extensions` (
 LOCK TABLES `extensions` WRITE;
 /*!40000 ALTER TABLE `extensions` DISABLE KEYS */;
 set autocommit=0;
+INSERT INTO `extensions` VALUES
+(13,10,'1001','Test','Maja1234!',NULL,NULL,30,1,'2026-02-15 16:56:37','2026-02-15 16:56:37');
 /*!40000 ALTER TABLE `extensions` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -993,6 +1055,7 @@ CREATE TABLE `intercoms` (
   `call_server_id` int(11) DEFAULT NULL,
   `branch_id` bigint(20) unsigned DEFAULT NULL,
   `name` varchar(191) NOT NULL,
+  `password` varchar(100) DEFAULT 'Maja1234!',
   `extension` varchar(20) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
@@ -1001,7 +1064,7 @@ CREATE TABLE `intercoms` (
   PRIMARY KEY (`id`),
   KEY `intercoms_call_server_id_index` (`call_server_id`),
   KEY `intercoms_branch_id_index` (`branch_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1170,7 +1233,7 @@ CREATE TABLE `lines` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1524,8 +1587,40 @@ SET character_set_client = utf8mb4;
 /*!50001 CREATE VIEW `ps_aors` AS SELECT
  1 AS `id`,
   1 AS `max_contacts`,
-  1 AS `remove_existing` */;
+  1 AS `remove_existing`,
+  1 AS `qualify_frequency` */;
 SET character_set_client = @saved_cs_client;
+
+--
+-- Table structure for table `ps_aors_backup`
+--
+
+DROP TABLE IF EXISTS `ps_aors_backup`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ps_aors_backup` (
+  `id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `max_contacts` int(1) NOT NULL DEFAULT 0,
+  `remove_existing` varchar(3) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ps_aors_backup`
+--
+
+LOCK TABLES `ps_aors_backup` WRITE;
+/*!40000 ALTER TABLE `ps_aors_backup` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `ps_aors_backup` VALUES
+('Cisco IP Phone 7821',1,'yes'),
+('Yealink T46S',1,'yes'),
+('Grandstream GXP2170',1,'yes'),
+('Polycom VVX 450',1,'yes'),
+('Fanvil X6U',1,'yes');
+/*!40000 ALTER TABLE `ps_aors_backup` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
 
 --
 -- Temporary table structure for view `ps_auths`
@@ -1541,6 +1636,38 @@ SET character_set_client = utf8mb4;
   1 AS `username`,
   1 AS `password` */;
 SET character_set_client = @saved_cs_client;
+
+--
+-- Table structure for table `ps_auths_backup`
+--
+
+DROP TABLE IF EXISTS `ps_auths_backup`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ps_auths_backup` (
+  `id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `auth_type` varchar(8) NOT NULL DEFAULT '',
+  `username` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password` varchar(9) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ps_auths_backup`
+--
+
+LOCK TABLES `ps_auths_backup` WRITE;
+/*!40000 ALTER TABLE `ps_auths_backup` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `ps_auths_backup` VALUES
+('Cisco IP Phone 7821','userpass','Cisco IP Phone 7821','Maja1234!'),
+('Yealink T46S','userpass','Yealink T46S','Maja1234!'),
+('Grandstream GXP2170','userpass','Grandstream GXP2170','Maja1234!'),
+('Polycom VVX 450','userpass','Polycom VVX 450','Maja1234!'),
+('Fanvil X6U','userpass','Fanvil X6U','Maja1234!');
+/*!40000 ALTER TABLE `ps_auths_backup` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
 
 --
 -- Temporary table structure for view `ps_endpoints`
@@ -1564,8 +1691,51 @@ SET character_set_client = utf8mb4;
   1 AS `force_rport`,
   1 AS `rewrite_contact`,
   1 AS `rtp_symmetric`,
-  1 AS `media_encryption` */;
+  1 AS `media_encryption`,
+  1 AS `call_server_id` */;
 SET character_set_client = @saved_cs_client;
+
+--
+-- Table structure for table `ps_endpoints_backup`
+--
+
+DROP TABLE IF EXISTS `ps_endpoints_backup`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ps_endpoints_backup` (
+  `id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `transport` varchar(13) NOT NULL DEFAULT '',
+  `aors` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `auth` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `context` varchar(13) NOT NULL DEFAULT '',
+  `disallow` varchar(3) NOT NULL DEFAULT '',
+  `allow` varchar(18) NOT NULL DEFAULT '',
+  `direct_media` varchar(3) NOT NULL DEFAULT '',
+  `ice_support` varchar(3) NOT NULL DEFAULT '',
+  `use_avpf` varchar(3) NOT NULL DEFAULT '',
+  `force_rport` varchar(3) NOT NULL DEFAULT '',
+  `rewrite_contact` varchar(3) NOT NULL DEFAULT '',
+  `rtp_symmetric` varchar(3) NOT NULL DEFAULT '',
+  `media_encryption` varchar(4) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ps_endpoints_backup`
+--
+
+LOCK TABLES `ps_endpoints_backup` WRITE;
+/*!40000 ALTER TABLE `ps_endpoints_backup` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `ps_endpoints_backup` VALUES
+('Cisco IP Phone 7821','transport-udp','Cisco IP Phone 7821','Cisco IP Phone 7821','from-internal','all','ulaw,alaw,gsm','no','no','no','yes','yes','yes','no'),
+('Yealink T46S','transport-udp','Yealink T46S','Yealink T46S','from-internal','all','ulaw,alaw,gsm','no','no','no','yes','yes','yes','no'),
+('Grandstream GXP2170','transport-udp','Grandstream GXP2170','Grandstream GXP2170','from-internal','all','ulaw,alaw,gsm','no','no','no','yes','yes','yes','no'),
+('Polycom VVX 450','transport-udp','Polycom VVX 450','Polycom VVX 450','from-internal','all','ulaw,alaw,gsm','no','no','no','yes','yes','yes','no'),
+('Fanvil X6U','transport-udp','Fanvil X6U','Fanvil X6U','from-internal','all','ulaw,alaw,gsm','no','no','no','yes','yes','yes','no');
+/*!40000 ALTER TABLE `ps_endpoints_backup` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
 
 --
 -- Table structure for table `recording_servers`
@@ -2438,6 +2608,7 @@ CREATE TABLE `vpws` (
   `call_server_id` int(11) DEFAULT NULL,
   `trunk_id` bigint(20) unsigned DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
+  `password` varchar(100) DEFAULT 'Maja1234!',
   `vpw_number` varchar(50) NOT NULL,
   `type` varchar(50) DEFAULT 'point_to_point',
   `source_extension` varchar(50) DEFAULT NULL,
@@ -2449,7 +2620,7 @@ CREATE TABLE `vpws` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2476,7 +2647,7 @@ commit;
 /*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `ps_aors` AS select `extensions`.`extension` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `extensions` where `extensions`.`is_active` = 1 union all select `vpws`.`vpw_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `vpws` where `vpws`.`is_active` = 1 union all select `cas`.`cas_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `cas` where `cas`.`is_active` = 1 union all select `lines`.`line_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `lines` where `lines`.`is_active` = 1 union all select `device_3rd_parties`.`name` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing` from `device_3rd_parties` where `device_3rd_parties`.`is_active` = 1 */;
+/*!50001 VIEW `ps_aors` AS select `e`.`extension` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing`,60 AS `qualify_frequency` from `extensions` `e` where `e`.`is_active` = 1 union all select `l`.`line_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing`,60 AS `qualify_frequency` from `lines` `l` where `l`.`is_active` = 1 union all select `v`.`vpw_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing`,60 AS `qualify_frequency` from `vpws` `v` where `v`.`is_active` = 1 union all select `c`.`cas_number` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing`,60 AS `qualify_frequency` from `cas` `c` where `c`.`is_active` = 1 union all select `i`.`extension` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing`,60 AS `qualify_frequency` from `intercoms` `i` where `i`.`is_active` = 1 union all select `d`.`extension` AS `id`,1 AS `max_contacts`,'yes' AS `remove_existing`,60 AS `qualify_frequency` from `device_3rd_parties` `d` where `d`.`is_active` = 1 and `d`.`extension` is not null */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -2494,7 +2665,7 @@ commit;
 /*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `ps_auths` AS select `extensions`.`extension` AS `id`,'userpass' AS `auth_type`,`extensions`.`extension` AS `username`,'Maja1234!' AS `password` from `extensions` where `extensions`.`is_active` = 1 union all select `vpws`.`vpw_number` AS `id`,'userpass' AS `auth_type`,`vpws`.`vpw_number` AS `username`,'Maja1234!' AS `password` from `vpws` where `vpws`.`is_active` = 1 union all select `cas`.`cas_number` AS `id`,'userpass' AS `auth_type`,`cas`.`cas_number` AS `username`,'Maja1234!' AS `password` from `cas` where `cas`.`is_active` = 1 union all select `lines`.`line_number` AS `id`,'userpass' AS `auth_type`,`lines`.`line_number` AS `username`,'Maja1234!' AS `password` from `lines` where `lines`.`is_active` = 1 union all select `device_3rd_parties`.`name` AS `id`,'userpass' AS `auth_type`,`device_3rd_parties`.`name` AS `username`,'Maja1234!' AS `password` from `device_3rd_parties` where `device_3rd_parties`.`is_active` = 1 */;
+/*!50001 VIEW `ps_auths` AS select `e`.`extension` AS `id`,'userpass' AS `auth_type`,`e`.`extension` AS `username`,`e`.`password` AS `password` from `extensions` `e` where `e`.`is_active` = 1 union all select `l`.`line_number` AS `id`,'userpass' AS `auth_type`,`l`.`line_number` AS `username`,`l`.`secret` AS `password` from `lines` `l` where `l`.`is_active` = 1 union all select `v`.`vpw_number` AS `id`,'userpass' AS `auth_type`,`v`.`vpw_number` AS `username`,`v`.`password` AS `password` from `vpws` `v` where `v`.`is_active` = 1 union all select `c`.`cas_number` AS `id`,'userpass' AS `auth_type`,`c`.`cas_number` AS `username`,`c`.`password` AS `password` from `cas` `c` where `c`.`is_active` = 1 union all select `i`.`extension` AS `id`,'userpass' AS `auth_type`,`i`.`extension` AS `username`,`i`.`password` AS `password` from `intercoms` `i` where `i`.`is_active` = 1 union all select `d`.`extension` AS `id`,'userpass' AS `auth_type`,`d`.`extension` AS `username`,`d`.`password` AS `password` from `device_3rd_parties` `d` where `d`.`is_active` = 1 and `d`.`extension` is not null */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -2512,7 +2683,7 @@ commit;
 /*!50001 SET collation_connection      = utf8mb4_uca1400_ai_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `ps_endpoints` AS select `extensions`.`extension` AS `id`,'transport-wss' AS `transport`,`extensions`.`extension` AS `aors`,`extensions`.`extension` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `extensions` where `extensions`.`is_active` = 1 union all select `vpws`.`vpw_number` AS `id`,'transport-wss' AS `transport`,`vpws`.`vpw_number` AS `aors`,`vpws`.`vpw_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `vpws` where `vpws`.`is_active` = 1 union all select `cas`.`cas_number` AS `id`,'transport-wss' AS `transport`,`cas`.`cas_number` AS `aors`,`cas`.`cas_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `cas` where `cas`.`is_active` = 1 union all select `lines`.`line_number` AS `id`,'transport-wss' AS `transport`,`lines`.`line_number` AS `aors`,`lines`.`line_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,opus,gsm' AS `allow`,'yes' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption` from `lines` where `lines`.`is_active` = 1 union all select `device_3rd_parties`.`name` AS `id`,'transport-udp' AS `transport`,`device_3rd_parties`.`name` AS `aors`,`device_3rd_parties`.`name` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw,gsm' AS `allow`,'no' AS `direct_media`,'no' AS `ice_support`,'no' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'no' AS `media_encryption` from `device_3rd_parties` where `device_3rd_parties`.`is_active` = 1 */;
+/*!50001 VIEW `ps_endpoints` AS select `e`.`extension` AS `id`,'transport-wss' AS `transport`,`e`.`extension` AS `aors`,`e`.`extension` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'opus,ulaw,alaw' AS `allow`,'no' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption`,`e`.`call_server_id` AS `call_server_id` from `extensions` `e` where `e`.`is_active` = 1 union all select `l`.`line_number` AS `id`,'transport-wss' AS `transport`,`l`.`line_number` AS `aors`,`l`.`line_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'opus,ulaw,alaw' AS `allow`,'no' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption`,`l`.`call_server_id` AS `call_server_id` from `lines` `l` where `l`.`is_active` = 1 union all select `v`.`vpw_number` AS `id`,'transport-wss' AS `transport`,`v`.`vpw_number` AS `aors`,`v`.`vpw_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'opus,ulaw,alaw' AS `allow`,'no' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption`,`v`.`call_server_id` AS `call_server_id` from `vpws` `v` where `v`.`is_active` = 1 union all select `c`.`cas_number` AS `id`,'transport-wss' AS `transport`,`c`.`cas_number` AS `aors`,`c`.`cas_number` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'opus,ulaw,alaw' AS `allow`,'no' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption`,`c`.`call_server_id` AS `call_server_id` from `cas` `c` where `c`.`is_active` = 1 union all select `i`.`extension` AS `id`,'transport-wss' AS `transport`,`i`.`extension` AS `aors`,`i`.`extension` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'opus,ulaw,alaw' AS `allow`,'no' AS `direct_media`,'yes' AS `ice_support`,'yes' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'dtls' AS `media_encryption`,`i`.`call_server_id` AS `call_server_id` from `intercoms` `i` where `i`.`is_active` = 1 union all select `d`.`extension` AS `id`,'transport-udp' AS `transport`,`d`.`extension` AS `aors`,`d`.`extension` AS `auth`,'from-internal' AS `context`,'all' AS `disallow`,'ulaw,alaw' AS `allow`,'no' AS `direct_media`,'no' AS `ice_support`,'no' AS `use_avpf`,'yes' AS `force_rport`,'yes' AS `rewrite_contact`,'yes' AS `rtp_symmetric`,'no' AS `media_encryption`,`d`.`call_server_id` AS `call_server_id` from `device_3rd_parties` `d` where `d`.`is_active` = 1 and `d`.`extension` is not null */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
 /*!50001 SET collation_connection      = @saved_col_connection */;
@@ -2526,4 +2697,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-02-14  4:10:40
+-- Dump completed on 2026-02-19  3:49:56
