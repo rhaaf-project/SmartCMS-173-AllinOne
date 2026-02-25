@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set("Asia/Jakarta"); // WIB UTC+7
 /**
  * Simple API Backend for SmartCMS Angular
  * Database: db_ucx (MariaDB)
@@ -32,6 +33,7 @@ $password = 'Maja1234!';
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec("SET time_zone = '+07:00'"); // WIB timezone
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
@@ -69,6 +71,9 @@ $tableMap = [
     'vpws' => 'private_wires',
     'cas' => 'cas',
     'device-3rd-parties' => 'device_3rd_parties',
+    'provisioning-brands' => 'provisioning_brands',
+    'provisioning-models' => 'provisioning_models',
+    'provisioning-templates' => 'provisioning_templates',
     'private-wires' => 'private_wires',
     'trunks' => 'trunks',
     'intercoms' => 'intercoms',
@@ -107,6 +112,84 @@ $tableMap = [
 ];
 
 $table = $tableMap[$resource] ?? null;
+
+// Login endpoint
+if ($resource === 'login' && $method === 'POST') {
+    $email = $input['email'] ?? '';
+    $password = $input['password'] ?? '';
+
+    if (!$email || !$password) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Email and password are required']);
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT id, name, email, password, role, profile_image, is_active FROM users WHERE email = ?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user || !password_verify($password, $user['password'])) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Invalid email or password']);
+            exit;
+        }
+
+        if (isset($user['is_active']) && !$user['is_active']) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Account is disabled']);
+            exit;
+        }
+
+        // Update last login (token will be set below)
+        $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?")->execute([$user['id']]);
+
+        // Get permissions for user role
+        $permissions = [];
+        if ($user['role']) {
+            try {
+                $permStmt = $pdo->prepare("SELECT page_key, can_view, can_create, can_edit, can_delete FROM role_permissions WHERE role = ?");
+                $permStmt->execute([$user['role']]);
+                $permRows = $permStmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($permRows as $p) {
+                    $permissions[$p['page_key']] = [
+                        'view' => (bool) $p['can_view'],
+                        'create' => (bool) $p['can_create'],
+                        'edit' => (bool) $p['can_edit'],
+                        'delete' => (bool) $p['can_delete'],
+                    ];
+                }
+            } catch (PDOException $e) {
+                // role_permissions table may not exist on all environments
+                $permissions = [];
+            }
+        }
+
+        // Generate simple token
+        $token = bin2hex(random_bytes(32));
+        // Store token for single-device enforcement
+        try {
+            $pdo->prepare("UPDATE users SET remember_token = ? WHERE id = ?")->execute([$token, $user['id']]);
+        } catch (Exception $e) { /* ignore */ }
+        // Log login activity
+        try {
+            $stmtLog = $pdo->prepare("INSERT INTO activity_logs (user_id, action, entity_type, ip_address, user_agent, created_at) VALUES (?, 'login', 'user', ?, ?, NOW())");
+            $stmtLog->execute([$user['id'], $_SERVER['REMOTE_ADDR'] ?? 'unknown', $_SERVER['HTTP_USER_AGENT'] ?? 'unknown']);
+        } catch (Exception $e) { /* ignore */ }
+
+        unset($user['password']);
+        echo json_encode([
+            'success' => true,
+            'user' => $user,
+            'permissions' => $permissions,
+            'token' => $token,
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Server error']);
+    }
+    exit;
+}
 
 // Role Permissions endpoint - get all permissions for a role
 if ($resource === 'permissions' && $method === 'GET') {
@@ -352,105 +435,162 @@ if ($resource === 'usage-report' && $method === 'GET') {
     exit;
 }
 
-// SBC Status Monitor - Live PJSIP Channels via AMI (171→172 environment)
-if (preg_match('/^sbc-status\/(\d+)$/', $resource . '/' . $id, $matches)) {
-    $sbcId = $matches[1];
+
+// SBC Status Monitor - list all SBCs with connection status
+if ($resource === 'sbc-status' && $id === null && $method === 'GET') {
     try {
-        $channels = [];
-
-        // Get PBX host from call_servers table
-        $stmt = $pdo->prepare("SELECT host, port FROM call_servers WHERE id = ?");
-        $stmt->execute([$sbcId]);
-        $server = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($server) {
-            $pbxHost = $server['host'];
-            $amiPort = 5038;
-            $amiUser = 'admin';
-            $amiSecret = 'admin1234';
-
-            // Connect to AMI
-            $socket = @fsockopen($pbxHost, $amiPort, $errno, $errstr, 3);
-            if ($socket) {
-                // Read banner
-                fgets($socket);
-
-                // Login
-                fwrite($socket, "Action: Login\r\nUsername: {$amiUser}\r\nSecret: {$amiSecret}\r\n\r\n");
-                $loginResponse = '';
-                while (($line = fgets($socket)) !== false) {
-                    $loginResponse .= $line;
-                    if (trim($line) === '')
-                        break;
-                }
-
-                // Send command to get channels
-                fwrite($socket, "Action: Command\r\nCommand: pjsip show channels\r\n\r\n");
-
-                // Read response
-                $output = '';
-                $timeout = time() + 5;
-                while (time() < $timeout) {
-                    $line = fgets($socket, 4096);
-                    if ($line === false)
-                        break;
-                    $output .= $line;
-                    if (strpos($line, '--END COMMAND--') !== false)
-                        break;
-                }
-
-                // Logoff
-                fwrite($socket, "Action: Logoff\r\n\r\n");
-                fclose($socket);
-
-                // Parse output lines
-                $lines = explode("\n", $output);
-                $i = 0;
-                while ($i < count($lines)) {
-                    $line = trim($lines[$i]);
-                    if (preg_match('/^Channel:\s+(\S+)\s+(\w+)\s+([\d:]+)/', $line, $m)) {
-                        $channelName = $m[1];
-                        $state = $m[2];
-                        $duration = $m[3];
-
-                        $source = '-';
-                        $destination = '-';
-                        if (isset($lines[$i + 1])) {
-                            $extLine = trim($lines[$i + 1]);
-                            if (preg_match('/CLCID:\s*"([^"]*)"/', $extLine, $cm)) {
-                                $clcidName = $cm[1];
-                                if (preg_match('/CID:(\d+)/', $clcidName, $cidm)) {
-                                    $source = $cidm[1];
-                                } else {
-                                    $source = $clcidName;
-                                }
-                            }
-                            if (preg_match('/CLCID:.*<(\d+)>/', $extLine, $dm)) {
-                                $destination = $dm[1];
-                            }
-                        }
-
-                        $channels[] = [
-                            'channel' => $channelName,
-                            'source' => $source,
-                            'destination' => $destination,
-                            'duration' => $duration,
-                            'state' => $state
-                        ];
-                        $i += 2;
-                    } else {
-                        $i++;
-                    }
-                }
+        $query = "SELECT s.*, cs.name as call_server_name FROM sbcs s LEFT JOIN call_servers cs ON s.call_server_id = cs.id";
+        $params = [];
+        if (isset($_GET['call_server_id']) && $_GET['call_server_id']) {
+            $query .= " WHERE s.call_server_id = ?";
+            $params[] = $_GET['call_server_id'];
+        }
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $sbcs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $results = [];
+        foreach ($sbcs as $sbc) {
+            // Get latest connection status from sbc_connection_status table
+            $connStmt = $pdo->prepare("SELECT * FROM sbc_connection_status WHERE sbc_id = ? ORDER BY id DESC LIMIT 1");
+            $connStmt->execute([$sbc['id']]);
+            $connRow = $connStmt->fetch(PDO::FETCH_ASSOC);
+            $host = $sbc['sip_server'] ?? null;
+            $port = $sbc['sip_server_port'] ?? 5060;
+            if ($connRow) {
+                $results[] = array_merge($connRow, [
+                    'sbc_name' => $sbc['name'] ?? null,
+                    'ip_address' => $host,
+                    'port' => $port,
+                    'call_server_name' => $sbc['call_server_name'] ?? null,
+                ]);
+            } else {
+                $results[] = [
+                    'id' => null,
+                    'sbc_id' => $sbc['id'],
+                    'sbc_name' => $sbc['name'] ?? null,
+                    'ip_address' => $host,
+                    'port' => $port,
+                    'call_server_name' => $sbc['call_server_name'] ?? null,
+                    'peer_name' => $sbc['name'] ?? null,
+                    'peer_type' => 'SIP_PEER',
+                    'remote_address' => ($host ? $host . ':' . $port : null),
+                    'registration_status' => ($sbc['registration'] === 'register' ? 'NOT_REGISTERED' : 'N/A'),
+                    'connection_status' => 'UNKNOWN',
+                    'latency_ms' => null,
+                    'active_calls' => 0,
+                    'max_calls' => $sbc['maxchans'] ?? null,
+                    'last_activity' => null,
+                ];
             }
         }
-
-        echo json_encode(['success' => true, 'data' => $channels]);
+        echo json_encode(['data' => $results, 'total' => count($results)]);
     } catch (Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage(), 'data' => []]);
+        echo json_encode(['data' => [], 'total' => 0, 'error' => $e->getMessage()]);
     }
     exit;
 }
+
+
+// SBC Status Monitor - Realtime via Asterisk AMI
+if (preg_match('/^sbc-status\/(\d+)$/', $resource . '/' . $id, $matches)) {
+    $sbcId = $matches[1];
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM sbcs WHERE id = ?");
+        $stmt->execute([$sbcId]);
+        $sbc = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$sbc) {
+            echo json_encode(['data' => [], 'total' => 0]);
+            exit;
+        }
+
+        $endpointName = 'sbc-' . $sbcId;
+        $sipServer = $sbc['sip_server'] ?? 'N/A';
+        $sipPort   = $sbc['sip_server_port'] ?? 5060;
+        $maxCalls  = $sbc['maxchans'] ?? null;
+
+        $result = [
+            'id'                  => (int)$sbcId,
+            'sbc_id'              => (int)$sbcId,
+            'peer_name'           => $sbc['name'],
+            'peer_type'           => 'ITSP',
+            'remote_address'      => $sipServer . ':' . $sipPort,
+            'local_user'          => null,
+            'registration_status' => 'NOT_REGISTERED',
+            'connection_status'   => 'UNKNOWN',
+            'latency_ms'          => null,
+            'active_calls'        => 0,
+            'max_calls'           => $maxCalls,
+            'last_activity'       => date('Y-m-d H:i:s'),
+        ];
+
+        // Query Asterisk AMI for realtime status
+        try {
+            $ami = @fsockopen('127.0.0.1', 5038, $errno, $errstr, 3);
+            if ($ami) {
+                stream_set_timeout($ami, 5);
+                fgets($ami, 256); // Read greeting
+
+                fputs($ami, "Action: Login\r\nUsername: smartcms\r\nSecret: smartcms_ami_secret_2026\r\n\r\n");
+                $buf = ''; $t = microtime(true) + 4;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $buf .= fgets($ami, 512);
+                    if (substr_count($buf, "\r\n\r\n") >= 1) break;
+                }
+
+                // pjsip show contacts -> RTT and status for this endpoint
+                fputs($ami, "Action: Command\r\nCommand: pjsip show contacts\r\nActionID: c1\r\n\r\n");
+                $out = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $out .= fgets($ami, 4096);
+                    if (strpos($out, '--END COMMAND--') !== false) break;
+                }
+                foreach (explode("\n", $out) as $line) {
+                    if (strpos($line, $endpointName . '/') !== false) {
+                        if (preg_match('/\s+(Avail|Unavail|NonQual|Unmonitored)\s+([\d.nan]+)/', $line, $m)) {
+                            $status = $m[1]; $rtt = floatval($m[2]);
+                            if ($status === 'Avail') {
+                                $result['connection_status'] = 'OK';
+                                $result['latency_ms'] = round($rtt, 2);
+                            } elseif ($status === 'Unavail') {
+                                $result['connection_status'] = 'UNREACHABLE';
+                            } else {
+                                $result['connection_status'] = 'UNKNOWN';
+                            }
+                        } elseif (strpos($line, 'NonQual') !== false) {
+                            $result['connection_status'] = 'UNKNOWN';
+                        } elseif (strpos($line, 'Unavail') !== false) {
+                            $result['connection_status'] = 'UNREACHABLE';
+                        }
+                        break;
+                    }
+                }
+
+                // core show channels -> count active channels for this endpoint
+                fputs($ami, "Action: Command\r\nCommand: core show channels verbose\r\nActionID: c2\r\n\r\n");
+                $chOut = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $chOut .= fgets($ami, 4096);
+                    if (strpos($chOut, '--END COMMAND--') !== false) break;
+                }
+                $activeCalls = 0;
+                foreach (explode("\n", $chOut) as $line) {
+                    if (strpos($line, 'PJSIP/' . $endpointName . '-') !== false) $activeCalls++;
+                }
+                $result['active_calls'] = $activeCalls;
+
+                fputs($ami, "Action: Logoff\r\n\r\n");
+                fclose($ami);
+            }
+        } catch (Exception $amiEx) { /* AMI unavailable, use defaults */ }
+
+        echo json_encode(['data' => [$result], 'total' => 1]);
+    } catch (Exception $e) {
+        echo json_encode(['data' => [], 'total' => 0, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+
 
 // Topology endpoint - generate network diagram data from real database
 if ($resource === 'topology' && $method === 'GET') {
@@ -570,6 +710,53 @@ if ($resource === 'topology' && $method === 'GET') {
             }
         }
 
+
+        // ---- CALL SERVERS (standalone nodes) ----
+        $nodeTrack=[];
+        foreach ($nodes as $nd) $nodeTrack[$nd['id']]=true;
+        try {
+            $csAll2=$pdo->query('SELECT * FROM call_servers WHERE is_active=1')->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($csAll2 as $cs) {
+                $csnid='cs_'.$cs['id'];
+                if (isset($nodeTrack[$csnid])) continue;
+                $csIp=$cs['host']??'N/A'; $csPort=$cs['port']??5060;
+                $nodes[]=['id'=>$csnid,'label'=>$cs['name'].chr(10).'IP: '.$csIp,'title'=>'Call Server: '.$cs['name'].chr(10).'IP: '.$csIp.':'.$csPort,'group'=>($cs['type']==='sbc')?'sbc':'callserver','ip'=>$csIp];
+                $nodeTrack[$csnid]=true;
+            }
+        } catch (Exception $e) {}
+        // ---- TRUNKS ----
+        try {
+            $trs2=$pdo->query('SELECT id,name,sip_server,sip_server_port,call_server_id FROM trunks')->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($trs2 as $tr) {
+                $tnid='trunk_'.$tr['id']; if (isset($nodeTrack[$tnid])) continue;
+                $tip=$tr['sip_server']??'N/A'; $tport=$tr['sip_server_port']??5060;
+                $tiplbl=($tip&&$tip!=='N/A')?$tip.':'.$tport:'N/A';
+                $nodes[]=['id'=>$tnid,'label'=>'trunk-'.$tr['id'].chr(10).$tr['name'].chr(10).'IP: '.$tiplbl,'title'=>'Trunk: '.$tr['name'].chr(10).'IP: '.$tiplbl,'group'=>'trunk','ip'=>$tip];
+                $nodeTrack[$tnid]=true;
+                if ($tr['call_server_id']) $edges[]=['from'=>'cs_'.$tr['call_server_id'],'to'=>$tnid,'label'=>'trunk','color'=>'#f59e0b'];
+            }
+        } catch (Exception $e) {}
+        // ---- SBCS ----
+        try {
+            $sbcrows2=$pdo->query('SELECT * FROM sbcs')->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($sbcrows2 as $sbc) {
+                $snid='sbc_'.$sbc['id']; if (isset($nodeTrack[$snid])) continue;
+                $sip=$sbc['sip_server']??'N/A'; $sport=$sbc['sip_server_port']??5060;
+                $siplbl=($sip&&$sip!=='N/A')?$sip.':'.$sport:'N/A';
+                $nodes[]=['id'=>$snid,'label'=>'sbc-'.$sbc['id'].chr(10).$sbc['name'].chr(10).'IP: '.$siplbl,'title'=>'SBC: '.$sbc['name'].chr(10).'IP: '.$siplbl,'group'=>'sbc','ip'=>$sip];
+                $nodeTrack[$snid]=true;
+                if (!empty($sbc['call_server_id'])) $edges[]=['from'=>'cs_'.$sbc['call_server_id'],'to'=>$snid,'label'=>'SBC','color'=>'#8b5cf6'];
+            }
+        } catch (Exception $e) {}
+        // ---- SBC BRIDGE ROUTES ----
+        try {
+            $rtrows2=$pdo->query('SELECT * FROM sbc_routes WHERE src_is_active=1 LIMIT 50')->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rtrows2 as $rt) {
+                $fn=$rt['src_from_sbc_id']?'sbc_'.$rt['src_from_sbc_id']:'trunk_'.$rt['src_destination_id'];
+                $tn=$rt['dest_from_sbc_id']?'sbc_'.$rt['dest_from_sbc_id']:'trunk_'.$rt['dest_destination_id'];
+                if (isset($nodeTrack[$fn])&&isset($nodeTrack[$tn])) $edges[]=['from'=>$fn,'to'=>$tn,'label'=>'bridge','color'=>'#22c55e','dashes'=>true];
+            }
+        } catch (Exception $e) {}
         // Get companies for filter dropdown
         $companies = $pdo->query("SELECT id, name, code FROM customers WHERE is_active = 1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -631,26 +818,132 @@ if ($resource === 'dropdowns' && $method === 'GET') {
     exit;
 }
 
-// Get current user profile endpoint
-if ($resource === 'me' && $method === 'GET') {
-    $userId = $_GET['user_id'] ?? null;
-    if (!$userId) {
+
+// Upload avatar endpoint
+if ($resource === 'upload-avatar' && $method === 'POST') {
+    $userId = $input['user_id'] ?? $_GET['user_id'] ?? null;
+    $imageData = $input['image'] ?? null;
+
+    if (!$userId || !$imageData) {
         http_response_code(400);
-        echo json_encode(['error' => 'User ID is required']);
+        echo json_encode(['error' => 'user_id and image are required']);
+        exit;
+    }
+
+    if (!preg_match('/^data:image\/([a-zA-Z0-9+.-]+);base64,/', $imageData, $typeMatch)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid image format, must be base64 data URI']);
+        exit;
+    }
+
+    $rawData = substr($imageData, strpos($imageData, ',') + 1);
+    $decoded = base64_decode($rawData);
+    if ($decoded === false) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Failed to decode image']);
+        exit;
+    }
+
+    $ext = strtolower($typeMatch[1]);
+    if ($ext === 'jpeg') $ext = 'jpg';
+    if ($ext === 'svg+xml') $ext = 'svg';
+    if (!in_array($ext, ['jpg', 'png', 'gif', 'webp', 'svg'])) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Unsupported image type: ' . $ext]);
+        exit;
+    }
+
+    $uploadDir = __DIR__ . '/avatars/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $filename = 'avatar_' . $userId . '_' . time() . '.' . $ext;
+    $filepath = $uploadDir . $filename;
+
+    if (file_put_contents($filepath, $decoded) === false) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to save image']);
         exit;
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT id, name, email, role, profile_image, is_active, last_login FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
+        $stmt = $pdo->prepare("UPDATE users SET profile_image = ? WHERE id = ?");
+        $stmt->execute([$filename, $userId]);
+        // Log profile photo update
+        try {
+            $__ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+            $__ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+            $__l = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, new_values) VALUES (?, 'updated', 'users', ?, ?, ?, ?)");
+            $__l->execute([$userId, $userId, $__ip, $__ua, json_encode(['profile_image' => $filename])]);
+        } catch (Exception $__e) {}
+        echo json_encode(['success' => true, 'filename' => $filename, 'url' => '/api/v1/avatar/' . $filename, 'profile_image' => '/api/v1/avatar/' . $filename]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'DB update failed: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+// Serve avatar image
+if ($resource === 'avatar' && $id && ($method === 'GET' || $method === 'HEAD')) {
+    header_remove('Content-Type');
+
+    $filename = basename($id);
+    $uploadDir = __DIR__ . '/avatars/';
+    $filepath = $uploadDir . $filename;
+
+    if (!file_exists($filepath)) {
+        header('Content-Type: application/json');
+        http_response_code(404);
+        echo json_encode(['error' => 'Avatar not found']);
+        exit;
+    }
+
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    $mimeTypes = [
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png'  => 'image/png',
+        'gif'  => 'image/gif',
+        'webp' => 'image/webp',
+        'svg'  => 'image/svg+xml',
+    ];
+    $mime = $mimeTypes[$ext] ?? 'application/octet-stream';
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . filesize($filepath));
+    header('Cache-Control: public, max-age=86400');
+    readfile($filepath);
+    exit;
+}
+
+// Get current user profile endpoint
+if ($resource === 'me' && $method === 'GET') {
+    // Validate by Bearer token only — no user_id required
+    // This enables single-device enforcement: new login overwrites token in DB
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+
+    if (!preg_match('/Bearer\s+(.+)/i', $authHeader, $tokenMatches)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized', 'reason' => 'no_token']);
+        exit;
+    }
+
+    $bearerToken = trim($tokenMatches[1]);
+
+    try {
+        $stmt = $pdo->prepare("SELECT id, name, email, role, profile_image, is_active, last_login FROM users WHERE remember_token = ?");
+        $stmt->execute([$bearerToken]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($user) {
-            echo json_encode(['success' => true, 'data' => $user]);
-        } else {
-            http_response_code(404);
-            echo json_encode(['error' => 'User not found']);
+        if (!$user) {
+            http_response_code(401);
+            echo json_encode(["error" => "Session expired. Please login again.", "code" => "TOKEN_INVALID"]);
+            exit;
         }
+
+        echo json_encode(['success' => true, 'data' => $user]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to fetch user']);
@@ -658,78 +951,6 @@ if ($resource === 'me' && $method === 'GET') {
     exit;
 }
 
-// Login endpoint
-if ($resource === 'login' && $method === 'POST') {
-    $email = $input['email'] ?? '';
-    $password = $input['password'] ?? '';
-    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-
-    if (empty($email) || empty($password)) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Email and password are required']);
-        exit;
-    }
-
-    // Query user from database
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ? AND is_active = 1");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Verify password (check both hashed and plain text for backward compatibility)
-    $passwordMatch = false;
-    if ($user) {
-        // Check if password is hashed (bcrypt starts with $2y$)
-        if (strpos($user['password'], '$2y$') === 0) {
-            $passwordMatch = password_verify($password, $user['password']);
-        } else {
-            // Plain text comparison (legacy)
-            $passwordMatch = ($user['password'] === $password);
-        }
-    }
-
-    if ($user && $passwordMatch) {
-        // Update last_login
-        $updateStmt = $pdo->prepare("UPDATE users SET last_login = NOW() WHERE id = ?");
-        $updateStmt->execute([$user['id']]);
-
-        // Log successful login
-        try {
-            $logStmt = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, new_values) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $logStmt->execute([$user['id'], 'login', 'auth', $user['id'], $ip_address, substr($user_agent, 0, 255), json_encode(['email' => $email, 'name' => $user['name']])]);
-        } catch (Exception $e) {
-            // Ignore logging errors
-        }
-
-        // Fetch user permissions
-        $permStmt = $pdo->prepare("SELECT page_key, can_view, can_create, can_edit, can_delete FROM role_permissions WHERE role = ?");
-        $permStmt->execute([$user['role']]);
-        $perms = $permStmt->fetchAll(PDO::FETCH_ASSOC);
-        $permMap = [];
-        foreach ($perms as $p) {
-            $permMap[$p['page_key']] = [
-                'view' => (bool) $p['can_view'],
-                'create' => (bool) $p['can_create'],
-                'edit' => (bool) $p['can_edit'],
-                'delete' => (bool) $p['can_delete'],
-            ];
-        }
-
-        echo json_encode(['success' => true, 'user' => ['id' => $user['id'], 'email' => $user['email'], 'name' => $user['name'], 'role' => $user['role'], 'profile_image' => $user['profile_image']], 'token' => bin2hex(random_bytes(32)), 'permissions' => $permMap]);
-    } else {
-        // Log failed login attempt
-        try {
-            $logStmt = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, new_values) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $logStmt->execute([null, 'login_failed', 'auth', null, $ip_address, substr($user_agent, 0, 255), json_encode(['email' => $email])]);
-        } catch (Exception $e) {
-            // Ignore logging errors
-        }
-
-        http_response_code(401);
-        echo json_encode(['error' => 'Invalid email or password']);
-    }
-    exit;
-}
 
 // Logout endpoint
 if ($resource === 'logout' && $method === 'POST') {
@@ -738,98 +959,624 @@ if ($resource === 'logout' && $method === 'POST') {
     $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
     $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
+    $userId = $input['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? null;
+
+    // Clear remember_token (single-device logout)
+    if ($userId) {
+        try {
+            $pdo->prepare("UPDATE users SET remember_token = NULL WHERE id = ?")->execute([$userId]);
+        } catch (Exception $e) { /* ignore */ }
+    }
+
     // Log logout activity
-    $logStmt = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, new_values) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $logStmt->execute([null, 'logout', 'auth', null, $ip_address, $user_agent, json_encode(['email' => $email, 'name' => $name])]);
+    try {
+        $logStmt = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, ip_address, user_agent, new_values) VALUES (?, 'logout', 'auth', ?, ?, ?)");
+        $logStmt->execute([$userId, $ip_address, $user_agent, json_encode(['email' => $email, 'name' => $name])]);
+    } catch (Exception $e) { /* ignore */ }
 
     echo json_encode(['success' => true, 'message' => 'Logged out successfully']);
     exit;
 }
 
-// Special endpoint: topology for Connectivity Diagram
-if ($resource === 'topology') {
-    $nodes = [];
-    $edges = [];
+// [Old simple topology removed - handled by comprehensive topology above]
 
-    // Get all head offices with branches
-    $stmt = $pdo->query("SELECT * FROM head_offices WHERE is_active = 1");
-    $headOffices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+// ============================================================
+// BACKUP & RESTORE API  (v2.0 — module-based)
+// ============================================================
+if ($resource === 'backup') {
+    // Auth: require valid token + admin/super_admin role
+    $bkHeaders = getallheaders();
+    $bkAuthH = $bkHeaders['Authorization'] ?? $bkHeaders['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $bkUser = null;
+    if (preg_match('/Bearer\s+(.+)/i', $bkAuthH, $bkTok)) {
+        $bkStmt = $pdo->prepare("SELECT id, name, role FROM users WHERE remember_token = ? AND is_active = 1");
+        $bkStmt->execute([trim($bkTok[1])]);
+        $bkUser = $bkStmt->fetch(PDO::FETCH_ASSOC);
+    }
+    if (!$bkUser) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']);
+        exit;
+    }
+    if (!in_array($bkUser['role'], ['super_admin', 'admin'])) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Forbidden: admin or super_admin required']);
+        exit;
+    }
 
-    foreach ($headOffices as $ho) {
-        // Get customer name
-        $custStmt = $pdo->prepare("SELECT name FROM customers WHERE id = ?");
-        $custStmt->execute([$ho['customer_id']]);
-        $customer = $custStmt->fetch(PDO::FETCH_ASSOC);
+    $bkDir = '/opt/smartcms/backup';
+    if (!is_dir($bkDir)) { mkdir($bkDir, 0755, true); }
 
-        // Add head office node
-        $nodes[] = [
-            'id' => 'ho_' . $ho['id'],
-            'label' => $ho['name'],
-            'title' => "HO: {$ho['name']}\nType: {$ho['type']}\nCompany: " . ($customer['name'] ?? 'N/A'),
-            'group' => 'headoffice',
-        ];
+    $action   = $id;
+    $subParam = $parts[2] ?? null;
 
-        // Get branches for this head office
-        $brStmt = $pdo->prepare("SELECT * FROM branches WHERE head_office_id = ?");
-        $brStmt->execute([$ho['id']]);
-        $branches = $brStmt->fetchAll(PDO::FETCH_ASSOC);
+    // Module => DB table mapping
+    $moduleTableMap = [
+        'extensions'   => ['extensions', 'lines', 'vpws', 'cas', 'intercoms', 'device_3rd_parties'],
+        'trunks'       => ['trunks'],
+        'sbc'          => ['sbcs', 'sbc_routes', 'sbc_connection_status'],
+        'routing'      => ['inbound_routings', 'outbound_routings', 'outbound_dial_patterns'],
+        'organization' => ['head_offices', 'branches', 'sub_branches'],
+        'users'        => ['users', 'cms_policies', 'activity_logs'],
+        'call_servers' => ['call_servers'],
+    ];
+    $fileModules = ['system_config', 'uploads'];
+    $allModules  = array_merge(array_keys($moduleTableMap), $fileModules);
 
-        foreach ($branches as $branch) {
-            // Get call server IP
-            $ip = 'N/A';
-            if ($branch['call_server_id']) {
-                $csStmt = $pdo->prepare("SELECT host FROM call_servers WHERE id = ?");
-                $csStmt->execute([$branch['call_server_id']]);
-                $cs = $csStmt->fetch(PDO::FETCH_ASSOC);
-                $ip = $cs['host'] ?? 'N/A';
+    // Validate backup filename: backup-YYYYMMDD-HHmmss.tar.gz
+    $validateFilename = function($fn) {
+        return (bool)preg_match('/^backup-\d{8}-\d{6}\.tar\.gz$/', $fn);
+    };
+
+    // ---- GET /v1/backup/list ----
+    if ($action === 'list' && $method === 'GET') {
+        $files = glob($bkDir . '/backup-*.tar.gz') ?: [];
+        $list  = [];
+        foreach ($files as $file) {
+            $fn    = basename($file);
+            $size  = filesize($file);
+            $mtime = filemtime($file);
+            $info  = null;
+            $infoJson = shell_exec("tar -xzf " . escapeshellarg($file) . " -O ./backup-info.json 2>/dev/null");
+            if ($infoJson) { $info = json_decode($infoJson, true); }
+            $list[] = [
+                'filename'   => $fn,
+                'size_bytes' => $size,
+                'size_human' => round($size / 1024 / 1024, 2) . ' MB',
+                'created_at' => date('Y-m-d H:i:s', $mtime),
+                'info'       => $info,
+            ];
+        }
+        usort($list, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
+        echo json_encode(['data' => $list]);
+        exit;
+    }
+
+    // ---- POST /v1/backup/create ----
+    if ($action === 'create' && $method === 'POST') {
+        $bkName     = isset($input['name'])        && $input['name']        !== '' ? trim($input['name'])        : null;
+        $bkDesc     = isset($input['description']) && $input['description'] !== '' ? trim($input['description']) : '';
+        $modulesSel = $input['modules'] ?? null;
+
+        // Resolve selected modules
+        if ($modulesSel === null) {
+            $selectedModules = $allModules;
+        } else {
+            $selectedModules = [];
+            foreach ($allModules as $m) {
+                if (!empty($modulesSel[$m])) $selectedModules[] = $m;
             }
-
-            $status = $branch['is_active'] ? 'OK' : 'Offline';
-
-            $nodes[] = [
-                'id' => 'br_' . $branch['id'],
-                'label' => $branch['name'],
-                'title' => "{$branch['name']}\nType: peer\nIP: {$ip}\nStatus: {$status}",
-                'group' => 'branch',
-                'status' => $status,
-                'ip' => $ip,
-                'has_sbc' => false,
-            ];
-
-            // Add edge from head office to branch
-            $edges[] = [
-                'from' => 'ho_' . $ho['id'],
-                'to' => 'br_' . $branch['id'],
-                'label' => '2',
-                'color' => $branch['is_active'] ? '#22c55e' : '#ef4444',
-            ];
         }
-    }
-
-    // Get orphan branches (no head office)
-    $orphanStmt = $pdo->query("SELECT * FROM branches WHERE head_office_id IS NULL AND is_active = 1");
-    $orphanBranches = $orphanStmt->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($orphanBranches as $branch) {
-        $ip = 'N/A';
-        if ($branch['call_server_id']) {
-            $csStmt = $pdo->prepare("SELECT host FROM call_servers WHERE id = ?");
-            $csStmt->execute([$branch['call_server_id']]);
-            $cs = $csStmt->fetch(PDO::FETCH_ASSOC);
-            $ip = $cs['host'] ?? 'N/A';
+        if (empty($selectedModules)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'No modules selected']);
+            exit;
         }
 
-        $nodes[] = [
-            'id' => 'br_' . $branch['id'],
-            'label' => $branch['name'],
-            'title' => "{$branch['name']}\nType: standalone\nIP: {$ip}",
-            'group' => 'standalone',
-            'ip' => $ip,
-            'has_sbc' => false,
+        $ts     = date('Ymd-His');
+        $tmpDir = "/tmp/smartcms-backup-$ts";
+        mkdir($tmpDir,           0755, true);
+        mkdir("$tmpDir/modules", 0755, true);
+
+        $moduleInfo = [];
+
+        // --- DB modules ---
+        foreach ($moduleTableMap as $modName => $tables) {
+            if (!in_array($modName, $selectedModules)) continue;
+            $existingTables = [];
+            $recordCounts   = [];
+            foreach ($tables as $t) {
+                try {
+                    $cnt = $pdo->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();
+                    $existingTables[] = $t;
+                    $recordCounts[$t] = (int)$cnt;
+                } catch (Exception $e) {}
+            }
+            if (!empty($existingTables)) {
+                $tableArgs = implode(' ', array_map('escapeshellarg', $existingTables));
+                exec("mysqldump -u asterisk -pMaja1234! --single-transaction --quick db_ucx $tableArgs > "
+                    . escapeshellarg("$tmpDir/modules/$modName.sql") . " 2>/dev/null");
+            }
+            $moduleInfo[$modName] = [
+                'included'      => true,
+                'tables'        => $existingTables,
+                'record_counts' => $recordCounts,
+            ];
+        }
+
+        // --- system_config module ---
+        if (in_array('system_config', $selectedModules)) {
+            $scDir = "$tmpDir/modules/system_config";
+            mkdir($scDir, 0755, true);
+            exec("cp -r /etc/smartcms-asterisk/. " . escapeshellarg($scDir) . "/ 2>/dev/null");
+            exec("find " . escapeshellarg($scDir) . " -name '*.bak*' -delete 2>/dev/null");
+            $configFiles = array_values(array_map('basename', glob("$scDir/*.conf") ?: []));
+            $moduleInfo['system_config'] = ['included' => true, 'files' => $configFiles];
+        }
+
+        // --- uploads module ---
+        if (in_array('uploads', $selectedModules)) {
+            $avatarSrc = '/opt/smartcms/backend/storage/avatars';
+            if (is_dir($avatarSrc)) {
+                $uplDir = "$tmpDir/modules/uploads/avatars";
+                mkdir($uplDir, 0755, true);
+                exec("cp -r " . escapeshellarg($avatarSrc) . "/. " . escapeshellarg($uplDir) . "/ 2>/dev/null");
+                $filesCount = count(glob("$uplDir/*") ?: []);
+            } else {
+                $filesCount = 0;
+            }
+            $moduleInfo['uploads'] = ['included' => true, 'files_count' => $filesCount];
+        }
+
+        // --- backup-info.json v2.0 ---
+        $bkInfo = [
+            'version'     => '2.0',
+            'name'        => $bkName ?: ('Backup ' . date('Y-m-d H:i')),
+            'description' => $bkDesc,
+            'created_at'  => date('Y-m-d H:i:s'),
+            'created_by'  => $bkUser['name'],
+            'server_ip'   => '103.154.80.173',
+            'modules'     => $moduleInfo,
         ];
+        file_put_contents("$tmpDir/backup-info.json", json_encode($bkInfo, JSON_PRETTY_PRINT));
+
+        // --- Create tar.gz ---
+        $tarFile = "$bkDir/backup-$ts.tar.gz";
+        exec("tar czf " . escapeshellarg($tarFile) . " -C " . escapeshellarg($tmpDir) . " . 2>/dev/null", $tarOut, $tarRc);
+        exec("rm -rf " . escapeshellarg($tmpDir));
+
+        if ($tarRc !== 0 || !file_exists($tarFile)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to create backup archive']);
+            exit;
+        }
+
+        $size = filesize($tarFile);
+        try {
+            $pdo->prepare("INSERT INTO activity_logs (user_id, action, entity_type, ip_address, user_agent, new_values, created_at) VALUES (?, 'created', 'backup', ?, ?, ?, NOW())")
+                ->execute([$bkUser['id'], $_SERVER['REMOTE_ADDR'] ?? 'unknown', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255), json_encode(['filename' => basename($tarFile), 'modules' => array_keys($moduleInfo)])]);
+        } catch (Exception $e) {}
+
+        echo json_encode([
+            'success'    => true,
+            'filename'   => basename($tarFile),
+            'name'       => $bkInfo['name'],
+            'size_bytes' => $size,
+            'size_human' => round($size / 1024 / 1024, 2) . ' MB',
+            'created_at' => date('Y-m-d H:i:s'),
+            'modules'    => array_keys($moduleInfo),
+        ]);
+        exit;
     }
 
-    echo json_encode(['data' => ['nodes' => $nodes, 'edges' => $edges]]);
+    // ---- GET /v1/backup/download/{filename} ----
+    if ($action === 'download' && $subParam && $method === 'GET') {
+        if (!$validateFilename($subParam)) {
+            http_response_code(400); echo json_encode(['error' => 'Invalid filename']); exit;
+        }
+        $filePath = "$bkDir/$subParam";
+        if (!file_exists($filePath)) {
+            http_response_code(404); echo json_encode(['error' => 'Backup file not found']); exit;
+        }
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . $subParam . '"');
+        header('Content-Length: ' . filesize($filePath));
+        header('Cache-Control: no-cache');
+        readfile($filePath);
+        exit;
+    }
+
+    // ---- DELETE /v1/backup/{filename} ----
+    $reservedActions = ['list', 'create', 'download', 'restore', 'restore-selective'];
+    if ($action && !in_array($action, $reservedActions) && $method === 'DELETE') {
+        if (!$validateFilename($action)) {
+            http_response_code(400); echo json_encode(['error' => 'Invalid filename']); exit;
+        }
+        $filePath = "$bkDir/$action";
+        if (!file_exists($filePath)) {
+            http_response_code(404); echo json_encode(['error' => 'Backup file not found']); exit;
+        }
+        unlink($filePath);
+        try {
+            $pdo->prepare("INSERT INTO activity_logs (user_id, action, entity_type, ip_address, user_agent, new_values, created_at) VALUES (?, 'deleted', 'backup', ?, ?, ?, NOW())")
+                ->execute([$bkUser['id'], $_SERVER['REMOTE_ADDR'] ?? 'unknown', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255), json_encode(['filename' => $action])]);
+        } catch (Exception $e) {}
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    // ---- POST /v1/backup/restore OR restore-selective ----
+    if (in_array($action, ['restore', 'restore-selective']) && $method === 'POST') {
+        $ts     = date('Ymd-His');
+        $tmpDir = "/tmp/smartcms-restore-$ts";
+        mkdir($tmpDir, 0755, true);
+
+        $uploadedFile = null;
+        if (!empty($_FILES['backup']['tmp_name'])) {
+            $uploadedFile = $_FILES['backup']['tmp_name'];
+        } elseif (!empty($input['filename'])) {
+            if (!$validateFilename($input['filename'])) {
+                exec("rm -rf " . escapeshellarg($tmpDir));
+                http_response_code(400); echo json_encode(['error' => 'Invalid filename']); exit;
+            }
+            $uploadedFile = "$bkDir/{$input['filename']}";
+        }
+
+        if (!$uploadedFile || !file_exists($uploadedFile)) {
+            exec("rm -rf " . escapeshellarg($tmpDir));
+            http_response_code(400); echo json_encode(['error' => 'No backup file provided']); exit;
+        }
+
+        exec("tar xzf " . escapeshellarg($uploadedFile) . " -C " . escapeshellarg($tmpDir) . " 2>&1", $extOut, $extRc);
+        if ($extRc !== 0) {
+            exec("rm -rf " . escapeshellarg($tmpDir));
+            http_response_code(500); echo json_encode(['error' => 'Failed to extract backup']); exit;
+        }
+
+        $infoFile = "$tmpDir/backup-info.json";
+        if (!file_exists($infoFile)) {
+            exec("rm -rf " . escapeshellarg($tmpDir));
+            http_response_code(400); echo json_encode(['error' => 'Invalid backup: missing backup-info.json']); exit;
+        }
+
+        $backupInfo = json_decode(file_get_contents($infoFile), true);
+        $bkVersion  = $backupInfo['version'] ?? '1.0';
+
+        if (!$backupInfo || !in_array($bkVersion, ['1.0', '2.0'])) {
+            exec("rm -rf " . escapeshellarg($tmpDir));
+            http_response_code(400); echo json_encode(['error' => 'Incompatible backup version']); exit;
+        }
+
+        $restored = [];
+
+        if ($bkVersion === '2.0') {
+            // ---- v2.0 module restore ----
+            $availableModules = array_keys($backupInfo['modules'] ?? []);
+            $selectedModules  = $input['modules'] ?? $availableModules;
+            $toRestore        = array_intersect($selectedModules, $availableModules);
+
+            foreach ($toRestore as $mod) {
+                if (empty($backupInfo['modules'][$mod]['included'])) continue;
+
+                if (isset($moduleTableMap[$mod])) {
+                    $sqlFile = "$tmpDir/modules/$mod.sql";
+                    if (file_exists($sqlFile)) {
+                        exec("mysql -u asterisk -pMaja1234! db_ucx < " . escapeshellarg($sqlFile) . " 2>&1", $dbOut, $dbRc);
+                        if ($dbRc === 0) $restored[] = $mod;
+                    }
+                } elseif ($mod === 'system_config' && is_dir("$tmpDir/modules/system_config")) {
+                    exec("cp -r " . escapeshellarg("$tmpDir/modules/system_config") . "/. /etc/smartcms-asterisk/ 2>/dev/null");
+                    $restored[] = 'system_config';
+                } elseif ($mod === 'uploads' && is_dir("$tmpDir/modules/uploads/avatars")) {
+                    if (!is_dir('/opt/smartcms/backend/storage/avatars')) {
+                        mkdir('/opt/smartcms/backend/storage/avatars', 0775, true);
+                    }
+                    exec("cp -r " . escapeshellarg("$tmpDir/modules/uploads/avatars") . "/. /opt/smartcms/backend/storage/avatars/ 2>/dev/null");
+                    $restored[] = 'uploads';
+                }
+            }
+            if (in_array('system_config', $restored)) {
+                exec("docker exec asterisk asterisk -rx 'core reload' 2>/dev/null");
+            }
+        } else {
+            // ---- v1.0 backward compat restore ----
+            $components = $input['components'] ?? $input['modules'] ?? ['database', 'asterisk_config', 'uploads'];
+            $includes   = array_values(array_intersect($backupInfo['includes'] ?? [], $components));
+
+            if (in_array('database', $includes) && file_exists("$tmpDir/database.sql")) {
+                exec("mysql -u asterisk -pMaja1234! db_ucx < " . escapeshellarg("$tmpDir/database.sql") . " 2>&1", $dbOut, $dbRc);
+                if ($dbRc === 0) $restored[] = 'database';
+            }
+            if (in_array('asterisk_config', $includes) && is_dir("$tmpDir/asterisk-config")) {
+                exec("cp -r " . escapeshellarg("$tmpDir/asterisk-config") . "/. /etc/smartcms-asterisk/ 2>/dev/null");
+                exec("docker exec asterisk asterisk -rx 'core reload' 2>/dev/null");
+                $restored[] = 'system_config';
+            }
+            if (in_array('uploads', $includes) && is_dir("$tmpDir/uploads/avatars")) {
+                if (!is_dir('/opt/smartcms/backend/storage/avatars')) {
+                    mkdir('/opt/smartcms/backend/storage/avatars', 0775, true);
+                }
+                exec("cp -r " . escapeshellarg("$tmpDir/uploads/avatars") . "/. /opt/smartcms/backend/storage/avatars/ 2>/dev/null");
+                $restored[] = 'uploads';
+            }
+        }
+
+        exec("rm -rf " . escapeshellarg($tmpDir));
+
+        try {
+            $pdo->prepare("INSERT INTO activity_logs (user_id, action, entity_type, ip_address, user_agent, new_values, created_at) VALUES (?, 'restored', 'backup', ?, ?, ?, NOW())")
+                ->execute([$bkUser['id'], $_SERVER['REMOTE_ADDR'] ?? 'unknown', substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255), json_encode(['modules' => $restored])]);
+        } catch (Exception $e) {}
+
+        echo json_encode(['success' => true, 'restored' => $restored, 'backup_info' => $backupInfo]);
+        exit;
+    }
+
+    http_response_code(404);
+    echo json_encode(['error' => 'Unknown backup action: ' . $action]);
+    exit;
+}
+
+// ============================================================
+// CMS POLICIES API  (role-hierarchy aware)
+// ============================================================
+if ($resource === 'cms-policies') {
+    // Auth
+    $cpHeaders = getallheaders();
+    $cpAuthH   = $cpHeaders['Authorization'] ?? $cpHeaders['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $cpUser    = null;
+    if (preg_match('/Bearer\s+(.+)/i', $cpAuthH, $cpTok)) {
+        $cpStmt = $pdo->prepare(
+            "SELECT u.id, u.name, u.role, COALESCE(cp.level, 99) AS my_level
+             FROM users u
+             LEFT JOIN cms_policies cp ON u.policy_id = cp.id
+             WHERE u.remember_token = ? AND u.is_active = 1"
+        );
+        $cpStmt->execute([trim($cpTok[1])]);
+        $cpUser = $cpStmt->fetch(PDO::FETCH_ASSOC);
+    }
+    if (!$cpUser) {
+        http_response_code(401); echo json_encode(['error' => 'Unauthorized']); exit;
+    }
+    if (!in_array($cpUser['role'], ['super_admin', 'admin', 'operator'])) {
+        http_response_code(403); echo json_encode(['error' => 'Forbidden']); exit;
+    }
+    $myLevel = (int)$cpUser['my_level'];
+
+    // All permission columns
+    $permCols = [
+        'can_view_secret_extension','can_edit_secret_extension','can_edit_name_extension',
+        'can_view_secret_3rdparty','can_edit_secret_3rdparty','can_edit_name_3rdparty',
+        'can_create_extension','can_delete_extension',
+        'can_create_line','can_delete_line',
+        'can_create_vpw','can_delete_vpw',
+        'can_create_cas','can_delete_cas',
+        'can_create_3rdparty','can_delete_3rdparty',
+        'can_manage_trunks','can_manage_sbc','can_manage_call_servers',
+    ];
+
+    // ---- GET /v1/cms-policies  (list) ----
+    if ($method === 'GET' && !$id) {
+        $stmt = $pdo->prepare(
+            "SELECT id, name, role, description, level, " . implode(',', $permCols) . ", is_active, created_at, updated_at
+             FROM cms_policies WHERE level >= ? ORDER BY level ASC, id ASC"
+        );
+        $stmt->execute([$myLevel]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Cast booleans
+        foreach ($rows as &$r) {
+            foreach ($permCols as $c) { $r[$c] = (bool)$r[$c]; }
+            $r['is_active'] = (bool)$r['is_active'];
+            $r['level'] = (int)$r['level'];
+        }
+        echo json_encode(['data' => $rows, 'my_level' => $myLevel]);
+        exit;
+    }
+
+    // ---- GET /v1/cms-policies/{id} ----
+    if ($method === 'GET' && $id) {
+        $stmt = $pdo->prepare("SELECT * FROM cms_policies WHERE id = ?");
+        $stmt->execute([(int)$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { http_response_code(404); echo json_encode(['error' => 'Policy not found']); exit; }
+        if ((int)$row['level'] < $myLevel) {
+            http_response_code(403); echo json_encode(['error' => 'Forbidden: insufficient privilege level']); exit;
+        }
+        foreach ($permCols as $c) { $row[$c] = (bool)($row[$c] ?? false); }
+        $row['is_active'] = (bool)$row['is_active'];
+        $row['level'] = (int)$row['level'];
+        echo json_encode(['data' => $row]);
+        exit;
+    }
+
+    // ---- POST /v1/cms-policies  (create) ----
+    if ($method === 'POST' && !$id) {
+        if (empty($input['name'])) {
+            http_response_code(400); echo json_encode(['error' => 'Policy name is required']); exit;
+        }
+        $newLevel = isset($input['level']) ? (int)$input['level'] : ($myLevel + 1);
+        if ($newLevel <= $myLevel) {
+            http_response_code(403);
+            echo json_encode(['error' => "Cannot create policy with level $newLevel — must be greater than your level ($myLevel)"]);
+            exit;
+        }
+        // Build INSERT
+        $cols   = ['name', 'role', 'description', 'level'];
+        $vals   = [
+            $input['name'],
+            $input['role'] ?? 'operator',
+            $input['description'] ?? null,
+            $newLevel,
+        ];
+        foreach ($permCols as $c) {
+            $cols[] = $c;
+            $vals[] = !empty($input[$c]) ? 1 : 0;
+        }
+        $cols[] = 'is_active';
+        $vals[] = isset($input['is_active']) ? (int)(bool)$input['is_active'] : 1;
+
+        $placeholders = implode(',', array_fill(0, count($cols), '?'));
+        $colList      = implode(',', array_map(fn($c) => "`$c`", $cols));
+        $pdo->prepare("INSERT INTO cms_policies ($colList) VALUES ($placeholders)")->execute($vals);
+        $newId = $pdo->lastInsertId();
+
+        $stmt = $pdo->prepare("SELECT * FROM cms_policies WHERE id = ?");
+        $stmt->execute([$newId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        foreach ($permCols as $c) { $row[$c] = (bool)($row[$c] ?? false); }
+        $row['is_active'] = (bool)$row['is_active'];
+        $row['level'] = (int)$row['level'];
+        http_response_code(201);
+        echo json_encode(['success' => true, 'data' => $row]);
+        exit;
+    }
+
+    // ---- PUT /v1/cms-policies/{id}  (update) ----
+    if (in_array($method, ['PUT', 'PATCH']) && $id) {
+        $targetId = (int)$id;
+        $stmt = $pdo->prepare("SELECT * FROM cms_policies WHERE id = ?");
+        $stmt->execute([$targetId]);
+        $target = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$target) { http_response_code(404); echo json_encode(['error' => 'Policy not found']); exit; }
+        // Must be able to manage this level
+        if ((int)$target['level'] <= $myLevel) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Cannot edit policy at or above your privilege level']);
+            exit;
+        }
+        // Cannot escalate level to <= myLevel
+        if (isset($input['level']) && (int)$input['level'] <= $myLevel) {
+            http_response_code(403);
+            echo json_encode(['error' => "Cannot set level to {$input['level']} — must be greater than your level ($myLevel)"]);
+            exit;
+        }
+        // Protected: level of policy id=1 cannot change
+        if ($targetId === 1 && isset($input['level']) && (int)$input['level'] !== (int)$target['level']) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Cannot change the level of the Super Admin Policy']);
+            exit;
+        }
+
+        $setClauses = [];
+        $setVals    = [];
+        if (isset($input['name']))        { $setClauses[] = 'name = ?';        $setVals[] = $input['name']; }
+        if (isset($input['role']))        { $setClauses[] = 'role = ?';        $setVals[] = $input['role']; }
+        if (isset($input['description'])) { $setClauses[] = 'description = ?'; $setVals[] = $input['description']; }
+        if (isset($input['level']) && $targetId !== 1) {
+            $setClauses[] = 'level = ?'; $setVals[] = (int)$input['level'];
+        }
+        foreach ($permCols as $c) {
+            if (array_key_exists($c, $input)) { $setClauses[] = "$c = ?"; $setVals[] = $input[$c] ? 1 : 0; }
+        }
+        if (array_key_exists('is_active', $input)) {
+            $setClauses[] = 'is_active = ?'; $setVals[] = $input['is_active'] ? 1 : 0;
+        }
+        if (!empty($setClauses)) {
+            $setVals[] = $targetId;
+            $pdo->prepare("UPDATE cms_policies SET " . implode(',', $setClauses) . " WHERE id = ?")->execute($setVals);
+        }
+        $stmt->execute([$targetId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        foreach ($permCols as $c) { $row[$c] = (bool)($row[$c] ?? false); }
+        $row['is_active'] = (bool)$row['is_active'];
+        $row['level'] = (int)$row['level'];
+        echo json_encode(['success' => true, 'data' => $row]);
+        exit;
+    }
+
+    // ---- DELETE /v1/cms-policies/{id} ----
+    if ($method === 'DELETE' && $id) {
+        $targetId = (int)$id;
+        $stmt = $pdo->prepare("SELECT * FROM cms_policies WHERE id = ?");
+        $stmt->execute([$targetId]);
+        $target = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$target) { http_response_code(404); echo json_encode(['error' => 'Policy not found']); exit; }
+        // Protected policies (Super Admin, Admin defaults)
+        if (in_array($targetId, [1, 2])) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Cannot delete built-in policies']);
+            exit;
+        }
+        // Must be able to manage this level
+        if ((int)$target['level'] <= $myLevel) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Cannot delete policy at or above your privilege level']);
+            exit;
+        }
+        // Check users still using this policy
+        $usersStmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE policy_id = ?");
+        $usersStmt->execute([$targetId]);
+        $userCount = (int)$usersStmt->fetchColumn();
+        if ($userCount > 0) {
+            http_response_code(409);
+            echo json_encode(['error' => "Policy is used by $userCount user(s). Reassign users before deleting."]);
+            exit;
+        }
+        $pdo->prepare("DELETE FROM cms_policies WHERE id = ?")->execute([$targetId]);
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed']);
+    exit;
+}
+
+// ============================================================
+// USERS LIST — hierarchy filter (only show users at >= caller's level)
+// ============================================================
+if ($resource === 'users' && $method === 'GET' && !$id) {
+    // Resolve caller's policy level
+    $_uHeaders = function_exists('getallheaders') ? getallheaders() : [];
+    $_uAuthH   = $_uHeaders['Authorization'] ?? $_uHeaders['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $_uLevel   = 99;
+    if (preg_match('/Bearer\s+(.+)/i', $_uAuthH, $_uTok)) {
+        $_uStmt = $pdo->prepare(
+            "SELECT COALESCE(cp.level, 99) AS my_level
+             FROM users u LEFT JOIN cms_policies cp ON u.policy_id = cp.id
+             WHERE u.remember_token = ? AND u.is_active = 1"
+        );
+        $_uStmt->execute([trim($_uTok[1])]);
+        $_uRow = $_uStmt->fetch(PDO::FETCH_ASSOC);
+        if ($_uRow) $_uLevel = (int)$_uRow['my_level'];
+    }
+
+    $search  = $_GET['search'] ?? '';
+    $page    = max(1, intval($_GET['page'] ?? 1));
+    $perPage = max(1, intval($_GET['per_page'] ?? 50));
+    $offset  = ($page - 1) * $perPage;
+
+    $where  = "WHERE COALESCE(cp.level, 99) >= ?";
+    $params = [$_uLevel];
+    if ($search) {
+        $where   .= " AND (u.name LIKE ? OR u.email LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+
+    $countStmt = $pdo->prepare(
+        "SELECT COUNT(*) FROM users u LEFT JOIN cms_policies cp ON u.policy_id = cp.id $where"
+    );
+    $countStmt->execute($params);
+    $total = (int)$countStmt->fetchColumn();
+
+    $dataStmt = $pdo->prepare(
+        "SELECT u.*, cp.name AS policy_name, cp.level AS policy_level
+         FROM users u LEFT JOIN cms_policies cp ON u.policy_id = cp.id
+         $where ORDER BY u.id DESC LIMIT $perPage OFFSET $offset"
+    );
+    $dataStmt->execute($params);
+    $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'data'         => $rows,
+        'current_page' => $page,
+        'per_page'     => $perPage,
+        'total'        => $total,
+        'last_page'    => $perPage > 0 ? (int)ceil($total / $perPage) : 1,
+    ]);
     exit;
 }
 
@@ -838,6 +1585,18 @@ if (!$table) {
     echo json_encode(['error' => 'Resource not found', 'resource' => $resource]);
     exit;
 }
+
+// Resolve current logged-in user from Bearer token (for activity logging)
+$currentUserId = null;
+try {
+    $_allH = function_exists('getallheaders') ? getallheaders() : [];
+    $_authH = $_allH['Authorization'] ?? $_allH['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (preg_match('/Bearer\s+(.+)/i', $_authH, $_mTok)) {
+        $_us = $pdo->prepare("SELECT id FROM users WHERE remember_token = ?");
+        $_us->execute([trim($_mTok[1])]);
+        $currentUserId = $_us->fetchColumn() ?: null;
+    }
+} catch (Exception $_e) {}
 
 try {
     switch ($method) {
@@ -866,6 +1625,12 @@ try {
                     $stmt3 = $pdo->prepare("SELECT COUNT(*) as count FROM branches WHERE customer_id = ?");
                     $stmt3->execute([$id]);
                     $data['branches_count'] = $stmt3->fetch()['count'];
+                }
+                // branches: load customer, head_office, call_server
+                if ($table === 'branches') {
+                    if (!empty($data['customer_id'])) { $r=$pdo->prepare("SELECT id,name FROM customers WHERE id=?"); $r->execute([$data['customer_id']]); $data['customer']=$r->fetch(PDO::FETCH_ASSOC)?:null; } else { $data['customer']=null; }
+                    if (!empty($data['head_office_id'])) { $r=$pdo->prepare("SELECT id,name FROM head_offices WHERE id=?"); $r->execute([$data['head_office_id']]); $data['head_office']=$r->fetch(PDO::FETCH_ASSOC)?:null; } else { $data['head_office']=null; }
+                    if (!empty($data['call_server_id'])) { $r=$pdo->prepare("SELECT id,name,host FROM call_servers WHERE id=?"); $r->execute([$data['call_server_id']]); $data['call_server']=$r->fetch(PDO::FETCH_ASSOC)?:null; } else { $data['call_server']=null; }
                 }
 
                 // Load IVR entries
@@ -912,8 +1677,22 @@ try {
                     $params[] = $_GET['user_id'];
                 }
 
-                // Generic type filtering (e.g., call_servers?type=sbc) - Defensive check for column existence
-                if (isset($_GET['type'])) {
+                // Type filtering for call_servers: default excludes SBC; ?type=sbc returns SBC only; ?type=all returns all
+                if ($table === 'call_servers') {
+                    $typeParam = isset($_GET['type']) ? $_GET['type'] : '';
+                    if ($typeParam === '') {
+                        // Default: exclude SBC type
+                        $op = $where ? " AND " : " WHERE ";
+                        $where .= "$op (type IS NULL OR type = '' OR type != 'sbc')";
+                    } elseif ($typeParam !== 'all') {
+                        // Specific type filter (e.g. type=sbc)
+                        $op = $where ? " AND " : " WHERE ";
+                        $where .= "$op type = ?";
+                        $params[] = $typeParam;
+                    }
+                    // type=all: no filter
+                } elseif (isset($_GET['type'])) {
+                    // Generic type filtering for other tables with a type column
                     $checkCol = $pdo->query("SHOW COLUMNS FROM `$table` LIKE 'type'")->fetch();
                     if ($checkCol) {
                         $op = $where ? " AND " : " WHERE ";
@@ -921,17 +1700,41 @@ try {
                         $params[] = $_GET['type'];
                     }
                 }
-
                 // Count total
-                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `$table` $where");
+                if ($table === 'activity_logs') {
+                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `activity_logs` al $where");
+                } else {
+                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `$table` $where");
+                }
                 $countStmt->execute($params);
                 $total = $countStmt->fetchColumn();
 
                 // Get data
-                $sql = "SELECT * FROM `$table` $where ORDER BY id DESC LIMIT $perPage OFFSET $offset";
+                if ($table === 'activity_logs') {
+                    $sql = "SELECT al.*, u.id AS u_id, u.name AS u_name, u.email AS u_email FROM `activity_logs` al LEFT JOIN users u ON al.user_id = u.id $where ORDER BY al.id DESC LIMIT $perPage OFFSET $offset";
+                } else {
+                    $sql = "SELECT * FROM `$table` $where ORDER BY id DESC LIMIT $perPage OFFSET $offset";
+                }
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute($params);
                 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // Build nested user object for activity_logs
+                if ($table === 'activity_logs') {
+                    foreach ($rows as &$row) {
+                        if (!empty($row['u_id'])) {
+                            $row['user'] = [
+                                'id'    => $row['u_id'],
+                                'name'  => $row['u_name'],
+                                'email' => $row['u_email'],
+                            ];
+                        } else {
+                            $row['user'] = null;
+                        }
+                        unset($row['u_id'], $row['u_name'], $row['u_email']);
+                    }
+                    unset($row);
+                }
 
                 // Add counts for customers
                 if ($table === 'customers') {
@@ -944,6 +1747,14 @@ try {
                         $stmt3->execute([$row['id']]);
                         $row['branches_count'] = $stmt3->fetchColumn();
                     }
+                }
+
+                // Add is_active for sbcs (disabled=0 means active)
+                if ($table === 'sbcs') {
+                    foreach ($rows as &$row) {
+                        $row['is_active'] = empty($row['disabled']) ? 1 : 0;
+                    }
+                    unset($row);
                 }
 
                 // Add head_office relation for call_servers
@@ -991,6 +1802,15 @@ try {
                         $stmt4 = $pdo->prepare("SELECT COUNT(*) FROM call_servers WHERE head_office_id = ?");
                         $stmt4->execute([$row['id']]);
                         $row['call_servers_count'] = $stmt4->fetchColumn();
+                    }
+                }
+
+                // branches: load customer, head_office, call_server
+                if ($table === 'branches') {
+                    foreach ($rows as &$row) {
+                        if (!empty($row['customer_id'])) { $r=$pdo->prepare("SELECT id,name FROM customers WHERE id=?"); $r->execute([$row['customer_id']]); $row['customer']=$r->fetch(PDO::FETCH_ASSOC)?:null; } else { $row['customer']=null; }
+                        if (!empty($row['head_office_id'])) { $r=$pdo->prepare("SELECT id,name FROM head_offices WHERE id=?"); $r->execute([$row['head_office_id']]); $row['head_office']=$r->fetch(PDO::FETCH_ASSOC)?:null; } else { $row['head_office']=null; }
+                        if (!empty($row['call_server_id'])) { $r=$pdo->prepare("SELECT id,name,host FROM call_servers WHERE id=?"); $r->execute([$row['call_server_id']]); $row['call_server']=$r->fetch(PDO::FETCH_ASSOC)?:null; } else { $row['call_server']=null; }
                     }
                 }
 
@@ -1166,6 +1986,16 @@ try {
                 if (isset($filteredInput['dial_patterns']))
                     unset($filteredInput['dial_patterns']);
 
+                // Fetch old data before update (for old_values in activity log)
+                $oldData = null;
+                if ($method !== 'POST' && $id) {
+                    try {
+                        $_os = $pdo->prepare("SELECT * FROM `$table` WHERE id = ?");
+                        $_os->execute([$id]);
+                        $oldData = $_os->fetch(PDO::FETCH_ASSOC) ?: null;
+                    } catch (Exception $_e) {}
+                }
+
                 if ($method === 'POST') {
                     $columns = array_keys($filteredInput);
                     $placeholders = array_fill(0, count($columns), '?');
@@ -1173,6 +2003,15 @@ try {
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute(array_values($filteredInput));
                     $dataId = $pdo->lastInsertId();
+                    // Log created activity
+                    if (!in_array($table, ['activity_logs', 'system_logs', 'call_logs'])) {
+                        try {
+                            $_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                            $_ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+                            $__l = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, new_values) VALUES (?, 'created', ?, ?, ?, ?, ?)");
+                            $__l->execute([$currentUserId, $table, $dataId, $_ip, $_ua, json_encode($filteredInput)]);
+                        } catch (Exception $_e) {}
+                    }
                 } else {
                     $sets = [];
                     $values = [];
@@ -1185,15 +2024,14 @@ try {
                     $stmt = $pdo->prepare($sql);
                     $stmt->execute($values);
                     $dataId = $id;
-
-                    if ($table === 'users') {
+                    // Log updated activity (all tables)
+                    if (!in_array($table, ['activity_logs', 'system_logs', 'call_logs'])) {
                         try {
-                            $logStmt = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, new_values) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                            $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-                            $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
-                            $logStmt->execute([$id, 'update', 'users', $id, $ip_address, substr($user_agent, 0, 255), json_encode($input)]);
-                        } catch (Exception $e) {
-                        }
+                            $_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                            $_ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+                            $__l = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, old_values, new_values) VALUES (?, 'updated', ?, ?, ?, ?, ?, ?)");
+                            $__l->execute([$currentUserId, $table, $id, $_ip, $_ua, $oldData ? json_encode($oldData) : null, json_encode($filteredInput)]);
+                        } catch (Exception $_e) {}
                     }
                 }
 
@@ -1259,9 +2097,24 @@ try {
                 echo json_encode(['error' => 'ID required']);
                 exit;
             }
+            // Block deletion of activity logs
+            if ($table === 'activity_logs') {
+                http_response_code(405);
+                echo json_encode(['error' => 'Deleting activity logs is not allowed']);
+                exit;
+            }
 
             $stmt = $pdo->prepare("DELETE FROM `$table` WHERE id = ?");
             $stmt->execute([$id]);
+            // Log deleted activity
+            if (!in_array($table, ['activity_logs', 'system_logs', 'call_logs'])) {
+                try {
+                    $_ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+                    $_ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+                    $__l = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent) VALUES (?, 'deleted', ?, ?, ?, ?)");
+                    $__l->execute([$currentUserId, $table, $id, $_ip, $_ua]);
+                } catch (Exception $_e) {}
+            }
 
             echo json_encode(['message' => 'Deleted successfully']);
             break;
