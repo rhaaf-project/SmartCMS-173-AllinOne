@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartCMS - Network Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;background:#060818;color:#e0e6ed;min-height:100vh}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.15)}
+
+.header{display:flex;justify-content:space-between;align-items:center;padding:0 20px;height:55px;background:#0e1726;border-bottom:1px solid rgba(255,255,255,0.05);position:sticky;top:0;z-index:100}
+.header-left{display:flex;align-items:center;gap:12px}
+.btn-back{color:#e0e6ed;font-size:18px;text-decoration:none;padding:6px 10px;border-radius:6px;transition:all .2s;display:flex;align-items:center}
+.btn-back:hover{background:rgba(255,255,255,0.05);color:#4361ee}
+.header h1{font-size:17px;font-weight:600;color:#e0e6ed}
+.header-right{display:flex;align-items:center;gap:14px}
+.user-name{color:#506690;font-size:13px}
+.btn-logout{background:transparent;color:#506690;border:1px solid rgba(255,255,255,0.08);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;transition:all .2s}
+.btn-logout:hover{color:#e7515a;border-color:rgba(231,81,90,0.3)}
+
+main{max-width:1200px;margin:0 auto;padding:24px 20px}
+
+.device-section{margin-bottom:32px}
+.section-title{font-size:13px;font-weight:600;color:#506690;text-transform:uppercase;letter-spacing:.8px;padding:10px 16px;margin-bottom:12px;background:#0e1726;border-radius:8px;display:flex;align-items:center;gap:8px}
+.section-icon{font-size:15px}
+.section-count{font-size:11px;color:#506690;margin-left:auto;font-weight:400}
+.empty-text{color:#506690;padding:20px;text-align:center;font-size:13px}
+
+.device-card{background:#0e1726;border:1px solid rgba(255,255,255,0.05);border-radius:8px;margin-bottom:8px;transition:opacity .3s ease,max-height .3s ease,margin .3s ease,border-color .3s ease}
+.device-card:hover{border-color:rgba(255,255,255,0.1)}
+.device-card.expanded{border-color:rgba(67,97,238,0.4)}
+.device-card.hidden-focus{opacity:0;max-height:0!important;margin:0;padding:0;border:none;overflow:hidden;pointer-events:none}
+
+.device-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;transition:background .15s}
+.device-header:hover{background:rgba(255,255,255,0.02)}
+.device-info{flex:1}
+.device-name{font-size:14px;font-weight:600;color:#e0e6ed;margin-bottom:3px}
+.device-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.meta-ip{color:#506690;font-size:12px;font-family:'Courier New',monospace}
+.meta-type{font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(67,97,238,0.1);color:#4361ee;text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+.status-live{color:#00ab55;font-size:11px;font-weight:500}
+.status-db{color:#506690;font-size:11px;font-weight:500}
+
+.device-interfaces{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+.iface-badge{font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(59,130,246,0.08);color:#4361ee;font-family:'Courier New',monospace}
+.iface-badge small{color:#506690}
+.device-badges{margin-top:5px;display:flex;gap:5px;flex-wrap:wrap}
+.info-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:rgba(255,255,255,0.03);color:#506690}
+.badge-success{background:rgba(0,171,85,0.1);color:#00ab55}
+
+.expand-icon{color:#506690;font-size:11px;transition:transform .3s ease;min-width:18px;text-align:center}
+.device-card.expanded .expand-icon{transform:rotate(90deg)}
+
+.device-detail{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.device-card.expanded .device-detail{max-height:5000px}
+.detail-inner{padding:14px 16px;border-top:1px solid rgba(255,255,255,0.04)}
+
+.detail-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.tab-btn{padding:8px 18px;background:transparent;border:none;color:#506690;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;border-bottom:2px solid transparent;font-family:inherit}
+.tab-btn:hover{color:#e0e6ed}
+.tab-btn.active{color:#4361ee;border-bottom-color:#4361ee}
+
+.tab-loading{color:#506690;font-size:13px;padding:14px 0;text-align:center}
+
+.table-wrapper{overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{text-align:left;padding:8px 10px;background:rgba(255,255,255,0.02);color:#506690;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.data-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.03);color:#e0e6ed}
+.data-table tbody tr:hover{background:rgba(255,255,255,0.015)}
+.data-table tbody tr:nth-child(even){background:rgba(255,255,255,0.008)}
+.data-table code{font-family:'Courier New',monospace;background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:3px;font-size:11px;color:#e0e6ed}
+
+.source-badge{font-size:9px;padding:2px 5px;border-radius:3px;font-weight:600;letter-spacing:.3px}
+.source-os{background:rgba(0,171,85,0.12);color:#00ab55}
+.source-db{background:rgba(67,97,238,0.12);color:#4361ee}
+.iface-badge-sm{background:rgba(67,97,238,0.08);color:#4361ee;padding:1px 5px;border-radius:3px;font-size:10px;font-family:'Courier New',monospace}
+
+.action-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
+.action-accept,.action-allowin,.action-allow{background:rgba(0,171,85,0.12);color:#00ab55}
+.action-drop,.action-denyin,.action-deny{background:rgba(231,81,90,0.12);color:#e7515a}
+.action-reject,.action-rejectin{background:rgba(226,160,63,0.12);color:#e2a03f}
+.action-allowout{background:rgba(67,97,238,0.12);color:#4361ee}
+
+.empty-cell{text-align:center;color:#506690;padding:16px!important;font-style:italic}
+.readonly-label{color:#506690;font-size:10px}
+
+.btn-action-group{display:flex;gap:3px}
+.btn-edit-sm,.btn-delete-sm{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:3px 7px;border-radius:4px;cursor:pointer;font-size:11px;transition:all .15s}
+.btn-edit-sm{color:#4361ee}
+.btn-edit-sm:hover{background:rgba(67,97,238,0.1);border-color:rgba(67,97,238,0.3)}
+.btn-delete-sm{color:#e7515a}
+.btn-delete-sm:hover{background:rgba(231,81,90,0.1);border-color:rgba(231,81,90,0.3)}
+
+.btn-add{background:rgba(67,97,238,0.08);color:#4361ee;border:1px solid rgba(67,97,238,0.2);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;margin-top:10px;transition:all .2s;font-family:inherit}
+.btn-add:hover{background:rgba(67,97,238,0.15)}
+
+.ufw-summary{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 12px;background:rgba(255,255,255,0.015);border-radius:6px}
+.ufw-badge{font-size:11px;padding:3px 8px;border-radius:4px;font-weight:600}
+.ufw-active{background:rgba(0,171,85,0.12);color:#00ab55}
+.ufw-inactive{background:rgba(231,81,90,0.12);color:#e7515a}
+.ufw-policy{color:#506690;font-size:11px}
+
+.btn-back-focus{background:rgba(255,255,255,0.03);color:#506690;border:1px solid rgba(255,255,255,0.06);padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px;margin-bottom:10px;transition:all .2s;font-family:inherit;display:flex;align-items:center;gap:6px}
+.btn-back-focus:hover{color:#4361ee;border-color:rgba(67,97,238,0.3)}
+
+/* IP Config */
+.ip-card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:16px;margin-bottom:12px}
+.ip-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.ip-card-header-left{display:flex;align-items:center;gap:10px}
+.ip-iface-name{font-size:14px;font-weight:600;color:#4361ee;font-family:'Courier New',monospace}
+.ip-iface-mac{color:#506690;font-size:11px;font-family:'Courier New',monospace}
+.ip-state{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
+.ip-state-up{background:rgba(0,171,85,0.12);color:#00ab55}
+.ip-state-down{background:rgba(231,81,90,0.12);color:#e7515a}
+.ip-info-grid{display:grid;grid-template-columns:100px 1fr;gap:6px 12px;font-size:13px}
+.ip-info-label{color:#506690;font-weight:500}
+.ip-info-value{color:#e0e6ed}
+.ip-info-value code{background:rgba(255,255,255,0.04);padding:1px 5px;border-radius:3px;font-size:12px}
+.ip-card-actions{margin-top:12px}
+.btn-edit-ip{background:rgba(67,97,238,0.08);color:#4361ee;border:1px solid rgba(67,97,238,0.2);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;transition:all .2s;font-family:inherit}
+.btn-edit-ip:hover{background:rgba(67,97,238,0.15)}
+
+/* IP Pending confirmation */
+.ip-pending{background:rgba(226,160,63,0.08);border:1px solid rgba(226,160,63,0.2);border-radius:8px;padding:16px;margin-top:12px;text-align:center}
+.ip-pending h4{color:#e2a03f;font-size:14px;margin-bottom:8px}
+.ip-countdown{font-size:36px;font-weight:700;color:#e2a03f;margin:12px 0;font-family:'Courier New',monospace}
+.ip-pending p{color:#506690;font-size:12px;margin-bottom:12px}
+.ip-pending-actions{display:flex;gap:8px;justify-content:center}
+.btn-confirm{background:#00ab55;color:#fff;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s;font-family:inherit}
+.btn-confirm:hover{background:#009648}
+.btn-revert{background:rgba(231,81,90,0.12);color:#e7515a;border:1px solid rgba(231,81,90,0.25);padding:9px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;transition:all .2s;font-family:inherit}
+.btn-revert:hover{background:rgba(231,81,90,0.2)}
+
+/* IP warning box */
+.ip-warning{padding:10px;background:rgba(226,160,63,0.08);border-radius:6px;margin-bottom:14px}
+.ip-warning p{color:#e2a03f;font-size:12px;margin:0}
+
+/* Modal */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:1000}
+.modal-card{background:#0e1726;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:24px;width:90%;max-width:460px;box-shadow:0 16px 48px rgba(0,0,0,0.4);max-height:90vh;overflow-y:auto}
+.modal-card h3{font-size:16px;font-weight:600;margin-bottom:18px;color:#e0e6ed}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:#506690;margin-bottom:5px;font-weight:500}
+.form-group input,.form-group select{width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#e0e6ed;font-size:13px;font-family:inherit;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:#4361ee}
+.form-group input::placeholder{color:#506690}
+.form-group select option{background:#0e1726;color:#e0e6ed}
+.form-group input:disabled{opacity:0.5;cursor:not-allowed}
+.form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.btn-primary{background:#4361ee;color:#fff;border:none;padding:9px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s;font-family:inherit}
+.btn-primary:hover{background:#3b54d4}
+.btn-secondary{background:rgba(231,81,90,0.08);color:#e7515a;border:1px solid rgba(231,81,90,0.2);padding:9px 20px;border-radius:6px;cursor:pointer;font-size:13px;font-family:inherit;transition:all .2s}
+.btn-secondary:hover{background:rgba(231,81,90,0.15);color:#e7515a}
+
+#toast-container{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#0e1726;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:18px 22px;display:flex;align-items:flex-start;gap:12px;min-width:400px;max-width:520px;box-shadow:0 8px 24px rgba(0,0,0,0.4);pointer-events:auto;animation:toastIn .3s ease;font-family:'Nunito',sans-serif}
+.toast-success{border-left:3px solid #00ab55}
+.toast-error{border-left:3px solid #e7515a}
+.toast-warning{border-left:3px solid #e2a03f}
+.toast-info{border-left:3px solid #4361ee}
+.toast-icon{font-size:22px;flex-shrink:0;margin-top:2px}
+.toast-success .toast-icon{color:#00ab55}
+.toast-error .toast-icon{color:#e7515a}
+.toast-warning .toast-icon{color:#e2a03f}
+.toast-info .toast-icon{color:#4361ee}
+.toast-body{flex:1}
+.toast-title{font-size:15px;font-weight:600;color:#e0e6ed;margin-bottom:2px}
+.toast-message{font-size:13px;color:#888ea8;line-height:1.4}
+.toast-ok{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e0e6ed;cursor:pointer;font-size:12px;font-weight:600;padding:6px 16px;margin-left:8px;flex-shrink:0;align-self:center;font-family:'Nunito',sans-serif}
+.toast-ok:hover{background:rgba(255,255,255,0.12)}
+.toast-success .toast-ok{border-color:rgba(0,171,85,0.3);color:#00ab55}
+.toast-error .toast-ok{border-color:rgba(231,81,90,0.3);color:#e7515a}
+.toast-warning .toast-ok{border-color:rgba(226,160,63,0.3);color:#e2a03f}
+.toast-info .toast-ok{border-color:rgba(67,97,238,0.3);color:#4361ee}
+@keyframes toastIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-20px)}}
+
+.loading-spinner{text-align:center;padding:60px;color:#506690;font-size:14px}
+.active-badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:500}
+.active-yes{background:rgba(0,171,85,0.12);color:#00ab55}
+.active-no{background:rgba(231,81,90,0.12);color:#e7515a}
+.proto-badge{font-size:9px;padding:1px 5px;border-radius:3px;background:rgba(255,255,255,0.05);color:#506690;margin-left:4px}
+
+.dns-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.dns-row input{flex:1}
+.btn-remove-dns{background:none;border:1px solid rgba(231,81,90,0.2);border-radius:4px;color:#e7515a;cursor:pointer;padding:4px 8px;font-size:13px;transition:all .15s;line-height:1}
+.btn-remove-dns:hover{background:rgba(231,81,90,0.1);border-color:rgba(231,81,90,0.4)}
+.btn-add-dns{background:none;color:#4361ee;border:1px solid rgba(67,97,238,0.2);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;margin-top:6px;transition:all .15s;font-family:inherit;display:flex;align-items:center;gap:4px}
+.btn-add-dns:hover{background:rgba(67,97,238,0.08);border-color:rgba(67,97,238,0.4)}
+
+@media(max-width:768px){.header{padding:0 12px;height:48px}main{padding:16px 10px}.device-header{padding:10px 12px}.detail-inner{padding:10px 12px}.modal-card{padding:18px;width:95%}.device-meta{gap:6px}.ip-info-grid{grid-template-columns:1fr}}
+
+/* System Control */
+.system-controls{display:flex;gap:8px;margin-left:auto;align-items:center}
+.sys-status{display:flex;align-items:center;gap:5px;font-size:11px;color:#888ea8;margin-right:8px;white-space:nowrap}
+.sys-status .bi-circle-fill{font-size:7px}
+.btn-sys{padding:5px 12px;border:1px solid rgba(255,255,255,0.1);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:'Nunito',sans-serif;transition:all .2s;background:transparent}
+.btn-sys:disabled{opacity:.4;cursor:not-allowed}
+.btn-sys-restart{color:#4361ee;border-color:rgba(67,97,238,.3)}
+.btn-sys-restart:hover:not(:disabled){background:rgba(67,97,238,.15)}
+.btn-sys-shutdown{color:#e7515a;border-color:rgba(231,81,90,.3)}
+.btn-sys-shutdown:hover:not(:disabled){background:rgba(231,81,90,.15)}
+.btn-sys-start{color:#00ab55;border-color:rgba(0,171,85,.3)}
+.btn-sys-start:hover:not(:disabled){background:rgba(0,171,85,.15)}
+.btn-sys-cancel{color:#e7515a;border-color:rgba(231,81,90,.3)}
+.btn-sys-cancel:hover:not(:disabled){background:rgba(231,81,90,.15)}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:10000;animation:fadeIn .2s ease}
+.confirm-modal{background:#0e1726;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:24px;min-width:360px;max-width:420px}
+.confirm-title{font-size:15px;font-weight:700;color:#e0e6ed;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.confirm-desc{font-size:13px;color:#888ea8;line-height:1.6;margin-bottom:16px}
+.confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.confirm-input{width:100%;padding:8px 12px;background:#1b2e4b;border:1px solid rgba(255,255,255,.1);border-radius:6px;color:#e0e6ed;font-size:13px;font-family:'Nunito',sans-serif;outline:none;margin:8px 0}
+.confirm-input:focus{border-color:#4361ee}
+.btn-sys-os-restart{color:#e2a03f;border-color:rgba(226,160,63,.3)}
+.btn-sys-os-restart:hover:not(:disabled){background:rgba(226,160,63,.15)}
+.btn-sys-os-shutdown{color:#e7515a;border-color:rgba(231,81,90,.4);font-weight:700}
+.btn-sys-os-shutdown:hover:not(:disabled){background:rgba(231,81,90,.18)}
+</style>
+
+<script>
+// i18n translation system
+const _lang = localStorage.getItem('i18n_lang') || localStorage.getItem('language') || 'en';
+let _translations = {};
+
+async function loadTranslations() {
+    try {
+        const res = await fetch('/SmartCMS/assets/i18n/' + _lang + '.json');
+        if (res.ok) {
+            _translations = await res.json();
+            applyTranslations();
+        }
+    } catch(e) { console.warn('Translation load failed:', e); }
+}
+
+function t(key) {
+    const keys = key.split('.');
+    let val = _translations;
+    for (const k of keys) {
+        if (val === undefined || val === null) return key;
+        val = val[k];
+    }
+    return val || key;
+}
+
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        el.textContent = t(el.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+        el.title = t(el.dataset.i18nTitle);
+    });
+}
+
+loadTranslations();
+</script>
+</head>
+<body>
+
+<div id="app">
+<header class="header">
+    <div class="header-left">
+        <a href="/SmartCMS/" class="btn-back"><i class="bi bi-arrow-left"></i></a>
+        <h1><i class="bi bi-hdd-network" style="margin-right:8px;font-size:18px"></i><span data-i18n="network.title">Network Management</span></h1>
+    </div>
+    <div class="header-right">
+        <span class="user-name" id="userName"></span>
+        <button class="btn-logout" onclick="logout()" data-i18n="auth.logout">Logout</button>
+    </div>
+</header>
+<main id="mainContent">
+    <div class="loading-spinner" id="loading">Loading devices...</div>
+</main>
+</div>
+
+<!-- ROUTE MODAL (DB routes) -->
+<div id="routeModal" class="modal-overlay" style="display:none">
+<div class="modal-card">
+    <h3 id="routeModalTitle" data-i18n="network.add_route">Add Static Route</h3>
+    <form id="routeForm">
+        <input type="hidden" id="routeEditId" value="">
+        <input type="hidden" id="routeDeviceType">
+        <input type="hidden" id="routeDeviceId">
+        <div class="form-group"><label>Destination (CIDR) *</label><input type="text" id="routeDest" placeholder="" required></div>
+        <div class="form-group"><label>Gateway *</label><input type="text" id="routeGw" placeholder="" required></div>
+        <div class="form-group"><label data-i18n="network.interface">Interface</label><select id="routeIface"></select></div>
+        <div class="form-group"><label data-i18n="network.metric">Metric</label><input type="number" id="routeMetric" value="100" min="0"></div>
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('routeModal')" data-i18n="common.cancel">Cancel</button>
+            <button type="submit" class="btn-primary" id="routeSubmitBtn">Add Route</button>
+        </div>
+    </form>
+</div>
+</div>
+
+<!-- FIREWALL MODAL (DB rules) -->
+<div id="firewallModal" class="modal-overlay" style="display:none">
+<div class="modal-card">
+    <h3 id="fwModalTitle" data-i18n="network.add_rule">Add Firewall Rule</h3>
+    <form id="firewallForm">
+        <input type="hidden" id="fwEditId" value="">
+        <input type="hidden" id="fwDeviceType">
+        <input type="hidden" id="fwDeviceId">
+        <div class="form-group"><label>Rule Name *</label><input type="text" id="fwName" placeholder="" required></div>
+        <div class="form-group"><label data-i18n="network.protocol">Protocol</label><select id="fwProto"><option value="TCP">TCP</option><option value="UDP">UDP</option><option value="ICMP">ICMP</option><option value="ALL">ALL</option></select></div>
+        <div class="form-group"><label>Port / Range *</label><input type="text" id="fwPort" placeholder="" required></div>
+        <div class="form-group"><label data-i18n="network.source">Source</label><input type="text" id="fwSource" placeholder=""></div>
+        <div class="form-group"><label data-i18n="network.action">Action</label><select id="fwAction"><option value="ACCEPT">ACCEPT</option><option value="DROP">DROP</option><option value="REJECT">REJECT</option></select></div>
+        <div class="form-group"><label data-i18n="sbc.priority">Priority</label><input type="number" id="fwPriority" value="100" min="1"></div>
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('firewallModal')" data-i18n="common.cancel">Cancel</button>
+            <button type="submit" class="btn-primary" id="fwSubmitBtn">Add Rule</button>
+        </div>
+    </form>
+</div>
+</div>
+
+<!-- OS FIREWALL EDIT MODAL -->
+<div id="osFwModal" class="modal-overlay" style="display:none">
+<div class="modal-card">
+    <h3 data-i18n="network.edit_rule">Edit System Firewall Rule</h3>
+    <form id="osFwForm">
+        <input type="hidden" id="osFwRuleNum" value="">
+        <input type="hidden" id="osFwUid" value="">
+        <div class="form-group"><label>Port / Range *</label><input type="text" id="osFwPort" required></div>
+        <div class="form-group"><label data-i18n="network.protocol">Protocol</label><select id="osFwProto"><option value="TCP">TCP</option><option value="UDP">UDP</option><option value="ALL">ALL</option></select></div>
+        <div class="form-group"><label data-i18n="network.source">Source</label><input type="text" id="osFwSource" placeholder=""></div>
+        <div class="form-group"><label data-i18n="network.action">Action</label><select id="osFwAction"><option value="ACCEPT">ALLOW</option><option value="DROP">DENY</option><option value="REJECT">REJECT</option></select></div>
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('osFwModal')" data-i18n="common.cancel">Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+        </div>
+    </form>
+</div>
+</div>
+
+<!-- OS ROUTE EDIT MODAL -->
+<div id="osRouteModal" class="modal-overlay" style="display:none">
+<div class="modal-card">
+    <h3 data-i18n="network.edit_route">Edit System Route</h3>
+    <form id="osRouteForm">
+        <input type="hidden" id="osRouteOldDest" value="">
+        <input type="hidden" id="osRouteOldGw" value="">
+        <input type="hidden" id="osRouteOldIface" value="">
+        <input type="hidden" id="osRouteOldMetric" value="">
+        <input type="hidden" id="osRouteUid" value="">
+        <div class="form-group"><label>Destination (CIDR) *</label><input type="text" id="osRouteDest" required></div>
+        <div class="form-group"><label data-i18n="network.gateway">Gateway</label><input type="text" id="osRouteGw" placeholder=""></div>
+        <div class="form-group"><label data-i18n="network.interface">Interface</label><select id="osRouteIface"></select></div>
+        <div class="form-group"><label data-i18n="network.metric">Metric</label><input type="number" id="osRouteMetric" value="" min="0" placeholder=""></div>
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('osRouteModal')" data-i18n="common.cancel">Cancel</button>
+            <button type="submit" class="btn-primary">Save</button>
+        </div>
+    </form>
+</div>
+</div>
+
+<!-- IP EDIT MODAL -->
+<div id="ipModal" class="modal-overlay" style="display:none">
+<div class="modal-card">
+    <h3 data-i18n="network.ip_config">Edit IP Configuration</h3>
+    <form id="ipForm">
+        <input type="hidden" id="ipConnName">
+        <input type="hidden" id="ipDevice">
+        <input type="hidden" id="ipUid">
+        <div class="form-group"><label data-i18n="network.interface">Interface</label><input type="text" id="ipIfaceName" disabled></div>
+        <div class="form-group">
+            <label data-i18n="network.method">Method</label>
+            <select id="ipMethod" onchange="toggleIpFields()">
+                <option value="manual">Static</option>
+                <option value="auto">DHCP</option>
+            </select>
+        </div>
+        <div id="ipStaticFields">
+            <div class="form-group"><label>IP Address / Prefix *</label><input type="text" id="ipAddress" placeholder=""></div>
+            <div class="form-group"><label data-i18n="network.gateway">Gateway</label><input type="text" id="ipGateway" placeholder=""></div>
+        </div>
+        <div class="form-group">
+            <label data-i18n="network.dns">DNS Servers</label>
+            <div id="dnsList"></div>
+            <button type="button" class="btn-add-dns" onclick="addDnsField()"><i class="bi bi-plus-circle"></i> Add DNS</button>
+        </div>
+        <div class="ip-warning">
+            <p>Warning: After applying, you have 2 minutes to confirm. If not confirmed, the configuration will automatically revert to prevent lockout.</p>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="closeModal('ipModal')" data-i18n="common.cancel">Cancel</button>
+            <button type="submit" class="btn-primary">Apply</button>
+        </div>
+    </form>
+</div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+var API='/SmartCMS/network-api.php';
+var token=localStorage.getItem('token');
+var devices=[];
+var interfaces=[];
+
+var firewallCache={};
+var ipTimers={};
+var ipConfigCache={};
+
+function typeLabel(t){
+    if(!t)return'';
+    var m={'asterisk':'Call Server','sbc':'SBC','call_server':'Call Server'};
+    return m[t.toLowerCase()]||t;
+}
+function escHtml(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+
+async function api(action,method,body){
+    method=method||'GET';body=body||null;
+    var opts={method:method,headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}};
+    if(body)opts.body=JSON.stringify(body);
+    var res=await fetch(API+'?'+action,opts);
+    if(res.status===401){logout();return null}
+    return res.json();
+}
+
+async function init(){
+    if(!token){window.location.href='/SmartCMS/login';return}
+    try{
+        var data=await api('action=devices');
+        if(!data||!data.success){logout();return}
+        devices=data.devices;
+        if(data.user)document.getElementById('userName').textContent=data.user.name;
+        var ifData=await api('action=interfaces');
+        if(ifData&&ifData.success)interfaces=ifData.interfaces;
+        renderDevices();
+    }catch(e){
+        console.error(e);
+        document.getElementById('mainContent').innerHTML='<div class="loading-spinner">Failed to load. Check connection.</div>';
+    }
+}
+
+function renderDevices(){
+    var main=document.getElementById('mainContent');
+    var cs=devices.filter(function(d){return d.server_type==='asterisk'});
+    var sbcs=devices.filter(function(d){return d.server_type==='sbc'});
+    var html='';
+
+    html+='<section class="device-section" id="section-cs">';
+    html+='<h2 class="section-title"><span class="section-icon"><i class="bi bi-hdd-rack"></i></span> Call Servers <span class="section-count">'+cs.length+'</span></h2>';
+    if(!cs.length)html+='<p class="empty-text">' + t('network.no_call_servers') + '</p>';
+    cs.forEach(function(d){html+=renderCard(d)});
+    html+='</section>';
+
+    html+='<section class="device-section" id="section-sbc">';
+    html+='<h2 class="section-title"><span class="section-icon"><i class="bi bi-shield-check"></i></span> SBC <span class="section-count">'+sbcs.length+'</span></h2>';
+    if(!sbcs.length)html+='<p class="empty-text">' + t('network.no_sbc_servers') + '</p>';
+    sbcs.forEach(function(d){html+=renderCard(d)});
+    html+='</section>';
+
+    main.innerHTML=html;
+}
+
+function renderCard(d){
+    var uid=d.device_type+'-'+d.id;
+    var sClass=d.is_local?'status-live':'status-db';
+    var sText=d.is_local?'<i class="bi bi-broadcast"></i> Live':'<i class="bi bi-cloud"></i> Remote';
+    var tl=typeLabel(d.server_type);
+
+    var ifHtml='';
+    if(d.network_info&&d.network_info.interfaces){
+        ifHtml=d.network_info.interfaces.map(function(i){
+            return '<span class="iface-badge">'+escHtml(i.name)+': '+escHtml(i.ip)+'</span>';
+        }).join('');
+    }
+
+    var badges='';
+    if(d.network_info){
+        badges='<span class="info-badge">'+(d.network_info.route_count||0)+' routes</span>';
+        badges+='<span class="info-badge">'+(d.network_info.firewall_rule_count||0)+' fw rules</span>';
+        if(d.network_info.firewall_active)badges+='<span class="info-badge badge-success">Firewall Active</span>';
+    }
+
+    var tabs='<button class="tab-btn active" onclick="showTab(\''+uid+'\',\'routes\',event)">Static Routes</button>'
+        +'<button class="tab-btn" onclick="showTab(\''+uid+'\',\'firewall\',event)">Firewall</button>';
+    var ipTabContent='';
+    if(d.is_local){
+        tabs+='<button class="tab-btn" onclick="showTab(\''+uid+'\',\'ipconfig\',event)">IP Configuration</button>';
+        ipTabContent='<div id="tab-ipconfig-'+uid+'" class="tab-content" style="display:none"><div class="tab-loading">Loading...</div></div>';
+    }
+
+    return '<div class="device-card" id="card-'+uid+'">'
+        +'<div class="device-header" onclick="toggleCard(\''+uid+'\')">'
+            +'<div class="device-info">'
+                +'<h3 class="device-name">'+escHtml(d.name)+'</h3>'
+                +'<div class="device-meta">'
+                    +'<span class="meta-ip">'+escHtml(d.server_ip)+(d.server_port?':'+d.server_port:'')+'</span>'
+                    +'<span class="meta-type">'+escHtml(tl)+'</span>'
+                    +'<span class="'+sClass+'">'+sText+'</span>'
+                +'</div>'
+                +(ifHtml?'<div class="device-interfaces" id="ifaces-'+uid+'">'+ifHtml+'</div>':'<div class="device-interfaces" id="ifaces-'+uid+'"></div>')
+                +(badges?'<div class="device-badges" id="badges-'+uid+'">'+badges+'</div>':'<div class="device-badges" id="badges-'+uid+'"></div>')
+            +'</div>'
+            +'<span class="expand-icon"><i class="bi bi-chevron-right"></i></span>'
+        +'</div>'
+        +'<div class="device-detail">'
+            +'<div class="detail-inner">'
+                +(d.is_local?'<div class="system-controls" id="sys-ctrl-'+uid+'"><span class="sys-status" id="sys-status-'+uid+'"><i class="bi bi-circle-fill" style="color:#888"></i> Checking...</span><button class="btn-sys btn-sys-start" id="btn-start-'+uid+'" onclick="systemControl(\x27'+uid+'\x27,\x27start\x27)" style="display:none"><i class="bi bi-play-fill"></i> Start</button><button class="btn-sys btn-sys-restart" id="btn-restart-'+uid+'" onclick="systemControl(\x27'+uid+'\x27,\x27restart\x27)" style="display:none"><i class="bi bi-arrow-clockwise"></i> Restart</button><button class="btn-sys btn-sys-shutdown" id="btn-shutdown-'+uid+'" onclick="systemControl(\x27'+uid+'\x27,\x27shutdown\x27)" style="display:none"><i class="bi bi-power"></i> Shutdown</button>'+'<span style="width:1px;height:20px;background:rgba(255,255,255,0.1);margin:0 4px"></span><button class="btn-sys btn-sys-os-restart" id="btn-osrestart-'+uid+'" onclick="systemControl(\x27'+uid+'\x27,\x27os_restart\x27)" style="display:none"><i class="bi bi-arrow-repeat"></i> Restart Device</button><button class="btn-sys btn-sys-os-shutdown" id="btn-osshutdown-'+uid+'" onclick="systemControl(\x27'+uid+'\x27,\x27os_shutdown\x27)" style="display:none"><i class="bi bi-plug"></i> Shutdown Device</button></div>':'')
+                +'<div class="detail-tabs">'+tabs+'</div>'
+                +'<div id="tab-routes-'+uid+'" class="tab-content"><div class="tab-loading">Loading...</div></div>'
+                +'<div id="tab-firewall-'+uid+'" class="tab-content" style="display:none"><div class="tab-loading">Loading...</div></div>'
+                +ipTabContent
+            +'</div>'
+        +'</div>'
+    +'</div>';
+}
+
+/* === FOCUS MODE === */
+function toggleCard(uid){
+    var card=document.getElementById('card-'+uid);
+    var isExpanded=card.classList.contains('expanded');
+    if(!isExpanded){
+        document.querySelectorAll('.device-card').forEach(function(c){
+            if(c.id!=='card-'+uid)c.classList.add('hidden-focus');
+        });
+        card.classList.add('expanded');
+        var btn=document.createElement('button');
+        btn.className='btn-back-focus';
+        btn.innerHTML='<i class="bi bi-arrow-left"></i> Back to all devices';
+        btn.id='backBtn-'+uid;
+        btn.onclick=function(){toggleCard(uid)};
+        card.parentNode.insertBefore(btn,card);
+        setTimeout(function(){card.scrollIntoView({behavior:'smooth',block:'start'})},50);
+        loadRoutes(uid);
+        loadFirewall(uid);
+        if(document.getElementById('tab-ipconfig-'+uid))loadIpConfig(uid);
+        if(document.getElementById('sys-ctrl-'+uid))refreshSystemStatus(uid);
+        startSyncTimer(uid);
+    }else{
+        document.querySelectorAll('.device-card.hidden-focus').forEach(function(c){
+            c.classList.remove('hidden-focus');
+        });
+        card.classList.remove('expanded');
+        var backBtn=document.getElementById('backBtn-'+uid);
+        if(backBtn)backBtn.remove();
+        stopSyncTimer();
+        // Clear any IP timers
+        Object.keys(ipTimers).forEach(function(k){
+            if(ipTimers[k].interval)clearInterval(ipTimers[k].interval);
+            delete ipTimers[k];
+        });
+    }
+}
+
+function parseUid(uid){
+    var idx=uid.lastIndexOf('-');
+    return{device_type:uid.substring(0,idx),device_id:uid.substring(idx+1)};
+}
+
+/* === TABS === */
+function showTab(uid,tab,evt){
+    ['routes','firewall','ipconfig'].forEach(function(t){
+        var el=document.getElementById('tab-'+t+'-'+uid);
+        if(el)el.style.display=t===tab?'block':'none';
+    });
+    var card=document.getElementById('card-'+uid);
+    card.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+    if(evt&&evt.target)evt.target.classList.add('active');
+    if(evt)evt.stopPropagation();
+}
+
+/* === ROUTES === */
+var lastRouteJson={};
+async function loadRoutes(uid,silent){
+    var p=parseUid(uid);
+    var el=document.getElementById('tab-routes-'+uid);
+    if(!el)return;
+    try{
+        var data=await api('action=routes&device_type='+p.device_type+'&device_id='+p.device_id);
+        if(!data||!data.success){if(!silent)el.innerHTML='<p style="color:#e7515a;padding:10px 0">Failed to load</p>';return}
+        var routes=data.routes||[];
+        var newJson=JSON.stringify(routes);
+        if(silent&&lastRouteJson[uid]===newJson)return;
+        lastRouteJson[uid]=newJson;
+
+        var html='<div class="table-wrapper"><table class="data-table"><thead><tr>'
+            +'<th>Destination</th><th>Gateway</th><th>Interface</th><th>Metric</th><th>Protocol</th><th>Actions</th>'
+            +'</tr></thead><tbody>';
+        var hasRows=false;
+        if(routes.length){
+            hasRows=true;
+            routes.forEach(function(r){
+                var protoTag=r.proto?'<span class="proto-badge">'+escHtml(r.proto)+'</span>':'';
+                var isDefault=r.destination==='default';
+                html+='<tr><td><code>'+escHtml(r.destination)+'</code></td>'
+                    +'<td>'+escHtml(r.gateway||'-')+'</td>'
+                    +'<td><span class="iface-badge-sm">'+escHtml(r.interface||'-')+'</span></td>'
+                    +'<td>'+escHtml(r.metric||'-')+'</td>'
+                    +'<td>'+protoTag+'</td>'
+                    +'<td><div class="btn-action-group">'
+                    +'<button class="btn-edit-sm" onclick="editOsRoute(\''+escHtml(r.destination)+'\',\''+escHtml(r.gateway||'')+'\',\''+escHtml(r.interface||'')+'\',\''+escHtml(r.metric||'')+'\',\''+uid+'\')" title="Edit"><i class="bi bi-pencil"></i></button>'
+                    +'<button class="btn-delete-sm" onclick="deleteOsRoute(\''+escHtml(r.destination)+'\',\''+escHtml(r.gateway||'')+'\',\''+escHtml(r.interface||'')+'\','+(isDefault?'true':'false')+',\''+uid+'\')" title="Delete"><i class="bi bi-trash"></i></button>'
+                    +'</div></td></tr>';
+            });
+        }
+        if(!hasRows)html+='<tr><td colspan="6" class="empty-cell">No routes configured</td></tr>';
+        html+='</tbody></table></div>';
+        html+='<button class="btn-add" onclick="openAddRouteModal(\''+p.device_type+'\',\''+p.device_id+'\')"><i class="bi bi-plus-lg"></i> Add Route</button>';
+        el.innerHTML=html;
+        var badgeData={os_routes:routes};
+        updateBadges(uid,badgeData);
+    }catch(e){if(!silent)el.innerHTML='<p style="color:#e7515a;padding:10px 0">Error loading routes</p>'}
+}
+
+/* === FIREWALL === */
+async function loadFirewall(uid,silent){
+    var p=parseUid(uid);
+    var el=document.getElementById('tab-firewall-'+uid);
+    try{
+        var data=await api('action=firewall&device_type='+p.device_type+'&device_id='+p.device_id);
+        if(!data||!data.success){el.innerHTML='<p style="color:#e7515a;padding:10px 0">Failed to load</p>';return}
+        if(data.db_rules)data.db_rules.forEach(function(r){firewallCache[r.id]=r});
+
+        var html='';
+        if(data.ufw_status){
+            var u=data.ufw_status;
+            html+='<div class="ufw-summary">'
+                +'<span class="ufw-badge '+(u.active?'ufw-active':'ufw-inactive')+'">'+(u.active?t('network.firewall_active'):'Firewall Inactive')+'</span>'
+                +'<span class="ufw-policy">Default: IN='+(u.default_incoming||'?')+' OUT='+(u.default_outgoing||'?')+'</span>'
+                +'</div>';
+        }
+        html+='<div class="table-wrapper"><table class="data-table"><thead><tr>'
+            +'<th>#</th><th>Name</th><th>Port</th><th>Proto</th><th>Action</th><th>Source</th><th>Data</th><th>Actions</th>'
+            +'</tr></thead><tbody>';
+        var hasRows=false;
+
+        if(data.ufw_rules&&data.ufw_rules.length){
+            hasRows=true;
+            data.ufw_rules.forEach(function(r){
+                var ac='action-'+(r.action||'').toLowerCase().replace(/\s/g,'');
+                var ufwNum=r.ufw_number||r.number||0;
+                html+='<tr><td>'+escHtml(''+(r.number||'-'))+'</td><td>-</td>'
+                    +'<td><code>'+escHtml(r.to||'-')+'</code></td><td>-</td>'
+                    +'<td><span class="action-badge '+ac+'">'+escHtml(r.action||'-')+'</span></td>'
+                    +'<td>'+escHtml(r.from||'Anywhere')+'</td>'
+                    +'<td><span class="source-badge source-os">System</span></td>'
+                    +'<td><div class="btn-action-group">'
+                    +'<button class="btn-edit-sm" onclick="editOsFirewall('+ufwNum+',\x27'+escHtml(r.to||'')+'\x27,\x27'+escHtml(r.action||'')+'\x27,\x27'+escHtml(r.from||'')+'\x27,\x27'+uid+'\x27)" title="Edit"><i class="bi bi-pencil"></i></button>'
+                    +'<button class="btn-delete-sm" onclick="deleteOsFirewall('+ufwNum+',\x27'+uid+'\x27)" title="Delete"><i class="bi bi-trash"></i></button>'
+                    +'</div></td></tr>';
+            });
+        }
+
+        if(data.db_rules&&data.db_rules.length){
+            hasRows=true;
+            data.db_rules.forEach(function(r){
+                var ac='action-'+(r.action||'').toLowerCase();
+                html+='<tr><td>'+escHtml(''+(r.priority||'-'))+'</td>'
+                    +'<td>'+escHtml(r.name)+'</td>'
+                    +'<td><code>'+escHtml(r.port)+'</code></td>'
+                    +'<td>'+escHtml(r.protocol)+'</td>'
+                    +'<td><span class="action-badge '+ac+'">'+escHtml(r.action)+'</span></td>'
+                    +'<td>'+escHtml(r.source||'Any')+'</td>'
+                    +'<td><span class="source-badge source-db">Stored</span></td>'
+                    +'<td><div class="btn-action-group">'
+                    +'<button class="btn-edit-sm" onclick="editFirewall('+r.id+',\''+uid+'\')" title="Edit"><i class="bi bi-pencil"></i></button>'
+                    +'<button class="btn-delete-sm" onclick="deleteFirewall('+r.id+',\''+uid+'\')" title="Delete"><i class="bi bi-trash"></i></button>'
+                    +'</div></td></tr>';
+            });
+        }
+        if(!hasRows)html+='<tr><td colspan="8" class="empty-cell">No firewall rules</td></tr>';
+        html+='</tbody></table></div>';
+        html+='<button class="btn-add" onclick="openAddFwModal(\''+p.device_type+'\',\''+p.device_id+'\')"><i class="bi bi-plus-lg"></i> Add Rule</button>';
+        el.innerHTML=html;
+        updateBadges(uid,data);
+    }catch(e){el.innerHTML='<p style="color:#e7515a;padding:10px 0">Error loading firewall</p>'}
+}
+
+/* === IP CONFIG === */
+async function loadIpConfig(uid){
+    var el=document.getElementById('tab-ipconfig-'+uid);
+    if(!el)return;
+    try{
+        var data=await api('action=ip_config');
+        if(!data||!data.success){el.innerHTML='<p style="color:#e7515a;padding:10px 0">Failed to load IP config</p>';return}
+        var html='';
+        ipConfigCache[uid]=data.interfaces||[];
+        if(!data.interfaces||!data.interfaces.length){
+            html='<p class="empty-text">No network interfaces found</p>';
+        }else{
+            data.interfaces.forEach(function(iface){
+                var stateClass=iface.state==='up'?'ip-state-up':'ip-state-down';
+                var stateText=iface.state==='up'?'UP':'DOWN';
+                var methodText=iface.method==='auto'?'DHCP':'Static';
+                var addrs=(iface.addresses||[]).join(', ')||'-';
+                var dnsStr=(iface.dns||[]).join(', ')||'-';
+                var safeDev=iface.device.replace(/'/g,"\\'");
+                var safeConn=iface.connection_name.replace(/'/g,"\\'");
+
+                html+='<div class="ip-card">';
+                html+='<div class="ip-card-header"><div class="ip-card-header-left">'
+                    +'<span class="ip-iface-name">'+escHtml(iface.device)+'</span>'
+                    +'<span class="ip-iface-mac">'+escHtml(iface.mac||'')+'</span>'
+                    +'<span class="ip-state '+stateClass+'">'+stateText+'</span>'
+                    +'</div>';
+                if(!iface.pending_confirm){
+                    html+='<button class="btn-edit-ip" onclick="openIpModal(\''+safeConn+'\',\''+safeDev+'\',\''+uid+'\')">Edit</button>';
+                }
+                html+='</div>';
+
+                html+='<div class="ip-info-grid">'
+                    +'<span class="ip-info-label">Method</span><span class="ip-info-value">'+escHtml(methodText)+'</span>'
+                    +'<span class="ip-info-label">Address</span><span class="ip-info-value"><code>'+escHtml(addrs)+'</code></span>'
+                    +'<span class="ip-info-label">Gateway</span><span class="ip-info-value"><code>'+escHtml(iface.gateway||'-')+'</code></span>'
+                    +'<span class="ip-info-label">DNS</span><span class="ip-info-value"><code>'+escHtml(dnsStr)+'</code></span>'
+                    +'<span class="ip-info-label">Connection</span><span class="ip-info-value">'+escHtml(iface.connection_name)+'</span>'
+                    +'</div>';
+
+                // Show pending confirmation
+                if(iface.pending_confirm&&iface.pending_remaining>0){
+                    var devId=iface.device.replace(/[^a-z0-9]/gi,'');
+                    html+='<div class="ip-pending" id="ip-pending-'+devId+'">'
+                        +'<h4>IP Change Pending Confirmation</h4>'
+                        +'<div class="ip-countdown" id="ip-countdown-'+devId+'">'+formatTime(iface.pending_remaining)+'</div>'
+                        +'<p>If not confirmed, configuration will auto-revert.</p>'
+                        +'<div class="ip-pending-actions">'
+                        +'<button class="btn-confirm" onclick="confirmIp(\''+safeDev+'\',\''+uid+'\')">Confirm Change</button>'
+                        +'<button class="btn-revert" onclick="revertIp(\''+safeDev+'\',\''+uid+'\')">Revert Now</button>'
+                        +'</div></div>';
+                    // Start countdown
+                    startCountdown(iface.device,iface.pending_remaining,uid);
+                }
+
+                html+='</div>';
+            });
+        }
+        el.innerHTML=html;
+        updateIfaceBadges(uid,data.interfaces||[]);
+    }catch(e){el.innerHTML='<p style="color:#e7515a;padding:10px 0">Error loading IP config</p>'}
+}
+
+var syncTimer=null;
+var syncUid=null;
+function startSyncTimer(uid){
+    stopSyncTimer();
+    syncUid=uid;
+    syncTimer=setInterval(function(){
+        loadRoutes(uid,true);
+        loadFirewall(uid,true);
+        if(document.getElementById('sys-ctrl-'+uid))refreshSystemStatus(uid);
+    },5000);
+}
+function stopSyncTimer(){
+    if(syncTimer){clearInterval(syncTimer);syncTimer=null;syncUid=null}
+}
+
+function updateBadges(uid,data){
+    var badgeEl=document.getElementById('badges-'+uid);
+    if(!badgeEl)return;
+    var routeCount=0,fwCount=0,fwActive=false;
+    // Count from the data that was just loaded
+    if(data.os_routes)routeCount+=data.os_routes.length;
+    if(data.routes)routeCount+=data.routes.length;
+    if(data.ufw_rules)fwCount+=data.ufw_rules.length;
+    if(data.db_rules)fwCount+=data.db_rules.length;
+    if(data.ufw_status&&data.ufw_status.active)fwActive=true;
+    // Read existing badges to preserve values we don't have
+    var existingBadges=badgeEl.innerHTML;
+    var rMatch=existingBadges.match(/(\d+) routes/);
+    var fMatch=existingBadges.match(/(\d+) fw rules/);
+    var curRoutes=rMatch?parseInt(rMatch[1]):0;
+    var curFw=fMatch?parseInt(fMatch[1]):0;
+    var hasFwActive=existingBadges.indexOf(t('network.firewall_active'))>=0;
+    // Update only what we have data for
+    if(data.os_routes!==undefined||data.routes!==undefined)curRoutes=routeCount;
+    if(data.ufw_rules!==undefined||data.db_rules!==undefined)curFw=fwCount;
+    if(data.ufw_status!==undefined)hasFwActive=fwActive;
+    var bhtml='<span class="info-badge">'+curRoutes+' routes</span>';
+    bhtml+='<span class="info-badge">'+curFw+' fw rules</span>';
+    if(hasFwActive)bhtml+='<span class="info-badge badge-success">Firewall Active</span>';
+    badgeEl.innerHTML=bhtml;
+}
+
+function updateIfaceBadges(uid,interfaces){
+    var el=document.getElementById('ifaces-'+uid);
+    if(!el)return;
+    if(!interfaces||!interfaces.length){el.innerHTML='';return}
+    el.innerHTML=interfaces.map(function(i){
+        var ip=(i.addresses&&i.addresses.length)?i.addresses[0]:(i.ip||'-');
+        return '<span class="iface-badge">'+escHtml(i.device||i.name)+': '+escHtml(ip)+'</span>';
+    }).join('');
+}
+
+function formatTime(sec){
+    var m=Math.floor(sec/60);
+    var s=sec%60;
+    return m+':'+(s<10?'0':'')+s;
+}
+
+function startCountdown(device,seconds,uid){
+    var devId=device.replace(/[^a-z0-9]/gi,'');
+    if(ipTimers[devId])clearInterval(ipTimers[devId].interval);
+    ipTimers[devId]={remaining:seconds,uid:uid,device:device};
+    ipTimers[devId].interval=setInterval(function(){
+        ipTimers[devId].remaining--;
+        var timerEl=document.getElementById('ip-countdown-'+devId);
+        if(timerEl)timerEl.textContent=formatTime(Math.max(0,ipTimers[devId].remaining));
+        if(ipTimers[devId].remaining<=0){
+            clearInterval(ipTimers[devId].interval);
+            delete ipTimers[devId];
+            loadIpConfig(uid);
+            showNotification('IP configuration auto-reverted','error');
+        }
+    },1000);
+}
+
+function toggleIpFields(){
+    var m=document.getElementById('ipMethod').value;
+    document.getElementById('ipStaticFields').style.display=m==='manual'?'block':'none';
+}
+
+function addDnsField(value){
+    var list=document.getElementById('dnsList');
+    var row=document.createElement('div');
+    row.className='dns-row';
+    var inp=document.createElement('input');
+    inp.type='text';inp.className='dns-input';inp.placeholder='e.g. 8.8.8.8';
+    inp.value=value||'';
+    inp.style.cssText='width:100%;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#e0e6ed;font-size:13px;font-family:inherit';
+    var btn=document.createElement('button');
+    btn.type='button';btn.className='btn-remove-dns';
+    btn.innerHTML='<i class="bi bi-x-lg"></i>';
+    btn.onclick=function(){row.remove()};
+    row.appendChild(inp);row.appendChild(btn);
+    list.appendChild(row);
+    inp.focus();
+}
+
+function getDnsValues(){
+    return Array.from(document.querySelectorAll('#dnsList .dns-input'))
+        .map(function(i){return i.value.trim()})
+        .filter(function(v){return v!==''});
+}
+
+function openIpModal(connName,device,uid){
+    document.getElementById('ipConnName').value=connName;
+    document.getElementById('ipDevice').value=device;
+    document.getElementById('ipUid').value=uid;
+    document.getElementById('ipIfaceName').value=device;
+    var cached=ipConfigCache[uid];
+    var cur=null;
+    if(cached){cur=cached.find(function(i){return i.device===device})}
+    var dnsList=document.getElementById('dnsList');
+    dnsList.innerHTML='';
+    if(cur){
+        document.getElementById('ipMethod').value=cur.method||'manual';
+        document.getElementById('ipAddress').value=(cur.addresses||[]).join(', ')||'';
+        document.getElementById('ipGateway').value=cur.gateway||'';
+        var dnsVals=cur.dns||[];
+        if(dnsVals.length===0){addDnsField('')}
+        else{dnsVals.forEach(function(d){addDnsField(d)})}
+    }else{
+        document.getElementById('ipMethod').value='manual';
+        document.getElementById('ipAddress').value='';
+        document.getElementById('ipGateway').value='';
+        addDnsField('8.8.8.8');
+    }
+    toggleIpFields();
+    document.getElementById('ipModal').style.display='flex';
+}
+
+document.getElementById('ipForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var device=document.getElementById('ipDevice').value;
+    var uid=document.getElementById('ipUid').value;
+    closeModal('ipModal');
+
+    try{
+        var body={
+            connection_name:document.getElementById('ipConnName').value,
+            device:device,
+            method:document.getElementById('ipMethod').value,
+            address:document.getElementById('ipAddress').value,
+            gateway:document.getElementById('ipGateway').value,
+            dns:getDnsValues().join(',')
+        };
+        var controller=new AbortController();
+        var timeoutId=setTimeout(function(){controller.abort()},10000);
+        var res=await fetch(API+'?action=set_ip',{
+            method:'PUT',
+            headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+            body:JSON.stringify(body),
+            signal:controller.signal
+        }).then(function(r){return r.json()});
+        clearTimeout(timeoutId);
+
+        if(res&&res.success){
+            showNotification('IP changed. Confirm within 2 minutes.','success');
+            loadIpConfig(uid);
+        }else{
+            showNotification((res&&res.error)||'Failed to apply IP change','error');
+            loadIpConfig(uid);
+        }
+    }catch(ex){
+        // Connection lost - IP might have changed
+        showNotification('IP change applied. Connection may have been disrupted.','success');
+        var devId=device.replace(/[^a-z0-9]/gi,'');
+        startCountdown(device,120,uid);
+    }
+});
+
+async function confirmIp(device,uid){
+    var res=await api('action=confirm_ip','POST',{device:device});
+    var devId=device.replace(/[^a-z0-9]/gi,'');
+    if(ipTimers[devId]){clearInterval(ipTimers[devId].interval);delete ipTimers[devId]}
+    if(res&&res.success){
+        showNotification('IP change confirmed','success');
+        loadIpConfig(uid);
+    }else{
+        showNotification((res&&res.error)||'Failed to confirm','error');
+    }
+}
+
+async function revertIp(device,uid){
+    if(!confirm('Revert IP configuration to previous settings?'))return;
+    var res=await api('action=revert_ip','POST',{device:device});
+    var devId=device.replace(/[^a-z0-9]/gi,'');
+    if(ipTimers[devId]){clearInterval(ipTimers[devId].interval);delete ipTimers[devId]}
+    if(res&&res.success){
+        showNotification('IP reverted to previous config','success');
+        loadIpConfig(uid);
+    }else{
+        showNotification((res&&res.error)||'Failed to revert','error');
+    }
+}
+
+/* === ROUTE MODAL === */
+function populateIfaceSelect(selId){
+    var sel=document.getElementById(selId||'routeIface');
+    if(interfaces.length){
+        sel.innerHTML=interfaces.map(function(i){return '<option value="'+i+'">'+i+'</option>'}).join('');
+    }else{
+        sel.innerHTML='<option value="ens18">ens18</option><option value="ens19">ens19</option>';
+    }
+}
+function openAddRouteModal(dt,di){
+    document.getElementById('routeEditId').value='';
+    document.getElementById('routeDeviceType').value=dt;
+    document.getElementById('routeDeviceId').value=di;
+    document.getElementById('routeDest').value='';
+    document.getElementById('routeGw').value='';
+    document.getElementById('routeMetric').value='100';
+    document.getElementById('routeModalTitle').textContent='Add Static Route';
+    document.getElementById('routeSubmitBtn').textContent='Add Route';
+    populateIfaceSelect('routeIface');
+    document.getElementById('routeModal').style.display='flex';
+}
+document.getElementById('routeForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var uid=document.getElementById('routeDeviceType').value+'-'+document.getElementById('routeDeviceId').value;
+    var body={destination:document.getElementById('routeDest').value,gateway:document.getElementById('routeGw').value,interface:document.getElementById('routeIface').value,metric:parseInt(document.getElementById('routeMetric').value)||100};
+    var res=await api('action=add_route','POST',body);
+    if(res&&res.success){closeModal('routeModal');loadRoutes(uid);showNotification('Route added','success')}
+    else{showNotification((res&&res.error)||'Failed','error')}
+});
+
+/* === ROUTE EDIT/DELETE === */
+function editOsRoute(dest,gw,iface,metric,uid){
+    document.getElementById('osRouteOldDest').value=dest;
+    document.getElementById('osRouteOldGw').value=gw;
+    document.getElementById('osRouteOldIface').value=iface;
+    document.getElementById('osRouteOldMetric').value=metric;
+    document.getElementById('osRouteUid').value=uid;
+    document.getElementById('osRouteDest').value=dest;
+    document.getElementById('osRouteGw').value=gw;
+    document.getElementById('osRouteMetric').value=metric;
+    populateIfaceSelect('osRouteIface');
+    if(iface)document.getElementById('osRouteIface').value=iface;
+    document.getElementById('osRouteModal').style.display='flex';
+}
+document.getElementById('osRouteForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var uid=document.getElementById('osRouteUid').value;
+    var body={
+        old_destination:document.getElementById('osRouteOldDest').value,
+        old_gateway:document.getElementById('osRouteOldGw').value,
+        old_interface:document.getElementById('osRouteOldIface').value,
+        old_metric:parseInt(document.getElementById('osRouteOldMetric').value)||0,
+        destination:document.getElementById('osRouteDest').value,
+        gateway:document.getElementById('osRouteGw').value,
+        interface:document.getElementById('osRouteIface').value,
+        metric:parseInt(document.getElementById('osRouteMetric').value)||100
+    };
+    var res=await api('action=edit_os_route','PUT',body);
+    if(res&&res.success){closeModal('osRouteModal');loadRoutes(uid);showNotification('Route updated','success')}
+    else{showNotification((res&&res.error)||'Failed to update','error')}
+});
+
+async function deleteOsRoute(dest,gw,iface,isDefault,uid){
+    var msg='Delete route '+dest+'?';
+    if(isDefault)msg='WARNING: Deleting the default route will break internet connectivity!\n\n'+msg;
+    if(!confirm(msg))return;
+    var res=await api('action=delete_os_route','DELETE',{destination:dest,gateway:gw,interface:iface});
+    if(res&&res.success){loadRoutes(uid);showNotification('Route deleted','success')}
+    else{showNotification((res&&res.error)||'Failed','error')}
+}
+
+/* === FIREWALL MODAL (DB) === */
+function openAddFwModal(dt,di){
+    document.getElementById('fwEditId').value='';
+    document.getElementById('fwDeviceType').value=dt;
+    document.getElementById('fwDeviceId').value=di;
+    document.getElementById('fwName').value='';document.getElementById('fwPort').value='';document.getElementById('fwSource').value='';document.getElementById('fwPriority').value='100';
+    document.getElementById('fwProto').value='TCP';document.getElementById('fwAction').value='ACCEPT';
+    document.getElementById('fwModalTitle').textContent='Add Firewall Rule';document.getElementById('fwSubmitBtn').textContent='Add Rule';
+    document.getElementById('firewallModal').style.display='flex';
+}
+function editFirewall(id,uid){
+    var r=firewallCache[id];if(!r){showNotification('Rule data not found','error');return}
+    var p=parseUid(uid);
+    document.getElementById('fwEditId').value=id;document.getElementById('fwDeviceType').value=p.device_type;document.getElementById('fwDeviceId').value=p.device_id;
+    document.getElementById('fwName').value=r.name||'';document.getElementById('fwProto').value=r.protocol||'TCP';document.getElementById('fwPort').value=r.port||'';
+    document.getElementById('fwSource').value=(r.source==='Any'?'':r.source)||'';document.getElementById('fwAction').value=r.action||'ACCEPT';document.getElementById('fwPriority').value=r.priority||'100';
+    document.getElementById('fwModalTitle').textContent='Edit Firewall Rule';document.getElementById('fwSubmitBtn').textContent='Save';
+    document.getElementById('firewallModal').style.display='flex';
+}
+document.getElementById('firewallForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var editId=document.getElementById('fwEditId').value;
+    var body={name:document.getElementById('fwName').value,protocol:document.getElementById('fwProto').value,port:document.getElementById('fwPort').value,source:document.getElementById('fwSource').value,action:document.getElementById('fwAction').value,priority:parseInt(document.getElementById('fwPriority').value)||100,is_active:1};
+    var res;
+    if(editId){body.id=parseInt(editId);res=await api('action=edit_firewall','PUT',body)}
+    else{body.device_type=document.getElementById('fwDeviceType').value;body.device_id=parseInt(document.getElementById('fwDeviceId').value);res=await api('action=add_firewall','POST',body)}
+    if(res&&res.success){closeModal('firewallModal');var uid=document.getElementById('fwDeviceType').value+'-'+document.getElementById('fwDeviceId').value;loadFirewall(uid);showNotification(editId?'Rule updated':'Rule added','success')}
+    else{showNotification((res&&res.error)||'Failed','error')}
+});
+
+/* === OS FIREWALL EDIT/DELETE === */
+function editOsFirewall(ruleNum,to,action,from,uid){
+    var port='',proto='TCP';
+    if(to){
+        var parts=to.split('/');
+        port=parts[0];
+        if(parts[1])proto=parts[1].toUpperCase();
+    }
+    var act='ACCEPT';
+    if(action){
+        var al=action.toLowerCase();
+        if(al.indexOf('deny')>=0)act='DROP';
+        else if(al.indexOf('reject')>=0)act='REJECT';
+    }
+    var source='';
+    if(from&&from!=='Anywhere')source=from;
+    document.getElementById('osFwRuleNum').value=ruleNum;
+    document.getElementById('osFwUid').value=uid;
+    document.getElementById('osFwPort').value=port;
+    document.getElementById('osFwProto').value=proto==='TCP'||proto==='UDP'?proto:'ALL';
+    document.getElementById('osFwSource').value=source;
+    document.getElementById('osFwAction').value=act;
+    document.getElementById('osFwModal').style.display='flex';
+}
+document.getElementById('osFwForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var ruleNum=parseInt(document.getElementById('osFwRuleNum').value);
+    var uid=document.getElementById('osFwUid').value;
+    var body={rule_number:ruleNum,port:document.getElementById('osFwPort').value,protocol:document.getElementById('osFwProto').value,source:document.getElementById('osFwSource').value,action:document.getElementById('osFwAction').value};
+    var res=await api('action=edit_os_firewall','PUT',body);
+    if(res&&res.success){closeModal('osFwModal');loadFirewall(uid);showNotification('Firewall rule updated','success')}
+    else{showNotification((res&&res.error)||'Failed to update','error')}
+});
+
+async function deleteOsFirewall(ruleNum,uid){
+    if(!confirm('Delete firewall rule #'+ruleNum+'? This change is immediate.'))return;
+    var res=await api('action=delete_os_firewall&rule_number='+ruleNum,'DELETE');
+    if(res&&res.success){loadFirewall(uid);showNotification('Firewall rule deleted','success')}
+    else{showNotification((res&&res.error)||'Failed','error')}
+}
+
+/* === DELETE === */
+async function deleteFirewall(id,uid){
+    if(!confirm('Delete this firewall rule?'))return;
+    var res=await api('action=delete_firewall&id='+id,'DELETE');
+    if(res&&res.success){loadFirewall(uid);showNotification('Rule deleted','success')}
+    else{showNotification((res&&res.error)||'Failed','error')}
+}
+
+/* === UTILS === */
+function closeModal(id){document.getElementById(id).style.display='none'}
+
+/* === SYSTEM CONTROL === */
+async function refreshSystemStatus(uid){
+    var p=parseUid(uid);
+    try{
+        var data=await api('action=system_status&device_type='+p.device_type+'&device_id='+p.device_id);
+        if(!data||!data.success)return;
+        var statusEl=document.getElementById('sys-status-'+uid);
+        var startBtn=document.getElementById('btn-start-'+uid);
+        var restartBtn=document.getElementById('btn-restart-'+uid);
+        var shutdownBtn=document.getElementById('btn-shutdown-'+uid);
+        if(!data.is_local){
+            if(statusEl)statusEl.innerHTML='<i class="bi bi-cloud" style="color:#888"></i> Remote';
+            if(startBtn)startBtn.style.display='none';
+            if(restartBtn)restartBtn.style.display='none';
+            if(shutdownBtn)shutdownBtn.style.display='none';
+            return;
+        }
+        var running=data.status==='running';
+        if(statusEl){
+            var color=running?'#00ab55':'#e7515a';
+            var label=running?(data.uptime||'Running'):'Stopped';
+            statusEl.innerHTML='<i class="bi bi-circle-fill" style="color:'+color+';font-size:7px"></i> '+escHtml(label);
+        }
+        if(startBtn)startBtn.style.display=running?'none':'inline-flex';
+        if(restartBtn)restartBtn.style.display=running?'inline-flex':'none';
+        if(shutdownBtn)shutdownBtn.style.display=running?'inline-flex':'none';
+        var osRestartBtn=document.getElementById('btn-osrestart-'+uid);
+        var osShutdownBtn=document.getElementById('btn-osshutdown-'+uid);
+        if(osRestartBtn)osRestartBtn.style.display='inline-flex';
+        if(osShutdownBtn)osShutdownBtn.style.display='inline-flex';
+    }catch(e){}
+}
+
+async function systemControl(uid,command){
+    var labels={restart:'Restart System',shutdown:'Shutdown System',start:'Start System',os_restart:'Restart Device',os_shutdown:'Shutdown Device'};
+    var descs={
+        restart:'This will restart the Asterisk system. All active calls will be disconnected.',
+        shutdown:'This will shutdown the Asterisk system. All services will stop and no calls can be made.',
+        start:'This will start the Asterisk system.',
+        os_restart:'This will restart the ENTIRE DEVICE (OS-level reboot). All services will be temporarily unavailable. The device will come back online automatically.',
+        os_shutdown:'This will SHUTDOWN the entire device. The device will NOT come back online automatically and must be manually powered on.'
+    };
+    var confirmed=await showConfirmDialog(labels[command],descs[command]);
+    if(!confirmed)return;
+    var typeWord=command;
+    if(command==='os_restart')typeWord='restart device';
+    if(command==='os_shutdown')typeWord='shutdown device';
+    var typed=await showTypeConfirmDialog(typeWord);
+    if(!typed)return;
+    var p=parseUid(uid);
+    var btn=document.getElementById('btn-'+command+'-'+uid);
+    var origHtml=btn?btn.innerHTML:'';
+    if(btn){btn.disabled=true;btn.innerHTML='<i class="bi bi-hourglass-split"></i> Processing...';}
+    try{
+        var data=await api('action=system_control','POST',{command:command,device_id:parseInt(p.device_id),device_type:p.device_type});
+        if(data&&data.success){
+            showToast('success',labels[command],data.message||'Command executed successfully');
+        }else{
+            showToast('error','Failed',data?data.error||data.message:'Command failed');
+        }
+        await refreshSystemStatus(uid);
+    }catch(e){
+        showToast('error','Error','Failed to communicate with server');
+    }
+    if(btn){btn.disabled=false;btn.innerHTML=origHtml;}
+}
+
+function showConfirmDialog(title,description){
+    return new Promise(function(resolve){
+        var overlay=document.createElement('div');
+        overlay.className='modal-overlay';
+        overlay.innerHTML='<div class="confirm-modal">'
+            +'<div class="confirm-title"><i class="bi bi-exclamation-triangle" style="color:#e2a03f"></i> '+escHtml(title)+'</div>'
+            +'<div class="confirm-desc">'+escHtml(description)+'</div>'
+            +'<div class="confirm-actions">'
+            +'<button class="btn-sys btn-sys-cancel" id="confirm-cancel-btn">Cancel</button>'
+            +'<button class="btn-sys btn-sys-restart" id="confirm-ok-btn">Continue</button>'
+            +'</div></div>';
+        document.body.appendChild(overlay);
+        overlay.querySelector('#confirm-cancel-btn').onclick=function(){overlay.remove();resolve(false)};
+        overlay.querySelector('#confirm-ok-btn').onclick=function(){overlay.remove();resolve(true)};
+        overlay.onclick=function(e){if(e.target===overlay){overlay.remove();resolve(false)}};
+    });
+}
+
+function showTypeConfirmDialog(command){
+    return new Promise(function(resolve){
+        var overlay=document.createElement('div');
+        overlay.className='modal-overlay';
+        overlay.innerHTML='<div class="confirm-modal">'
+            +'<div class="confirm-title"><i class="bi bi-shield-lock" style="color:#e7515a"></i> Confirm Action</div>'
+            +'<div class="confirm-desc">Type <strong style="color:#e0e6ed">'+escHtml(command)+'</strong> to confirm</div>'
+            +'<input type="text" class="confirm-input" id="type-confirm-input" autocomplete="off" placeholder="Type '+escHtml(command)+' here...">'
+            +'<div class="confirm-actions">'
+            +'<button class="btn-sys btn-sys-cancel" id="type-cancel-btn">Cancel</button>'
+            +'<button class="btn-sys btn-sys-shutdown" id="type-ok-btn" disabled>Confirm</button>'
+            +'</div></div>';
+        document.body.appendChild(overlay);
+        var input=overlay.querySelector('#type-confirm-input');
+        var okBtn=overlay.querySelector('#type-ok-btn');
+        input.addEventListener('input',function(){okBtn.disabled=input.value!==command});
+        input.addEventListener('keydown',function(e){if(e.key==='Enter'&&input.value===command){overlay.remove();resolve(true)}});
+        overlay.querySelector('#type-cancel-btn').onclick=function(){overlay.remove();resolve(false)};
+        okBtn.onclick=function(){overlay.remove();resolve(true)};
+        overlay.onclick=function(e){if(e.target===overlay){overlay.remove();resolve(false)}};
+        setTimeout(function(){input.focus()},100);
+    });
+}
+
+function showToast(type,title,message,duration){
+    if(duration===undefined)duration=4000;
+    var container=document.getElementById('toast-container');
+    var toast=document.createElement('div');
+    toast.className='toast toast-'+type;
+    var icons={success:'bi-check-circle-fill',error:'bi-x-circle-fill',warning:'bi-exclamation-triangle-fill',info:'bi-info-circle-fill'};
+    var iconClass=icons[type]||icons.info;
+    toast.innerHTML='<div class="toast-icon"><i class="bi '+iconClass+'"></i></div>'
+        +'<div class="toast-body"><div class="toast-title">'+escHtml(title)+'</div>'
+        +(message?'<div class="toast-message">'+escHtml(message)+'</div>':'')
+        +'</div><button class="toast-ok" onclick="this.closest(\'.toast\').remove()">OK</button>';
+    container.appendChild(toast);
+    if(duration>0){
+        setTimeout(function(){
+            toast.style.animation='toastOut .3s ease forwards';
+            setTimeout(function(){if(toast.parentElement)toast.remove()},300);
+        },duration);
+    }
+    return toast;
+}
+
+function showNotification(msg,type){
+    var titles={success:'Success',error:'Error',warning:'Warning',info:'Info'};
+    showToast(type||'info',titles[type]||'Notice',msg);
+}
+
+/* === IDLE TIMEOUT (15 min, synced with CMS) === */
+var idleWarningShown=false;
+var IDLE_TIMEOUT=15*60*1000;
+
+function updateActivity(){localStorage.setItem('lastActivity',Date.now().toString())}
+['mousemove','mousedown','keypress','scroll','touchstart','click'].forEach(function(evt){
+    document.addEventListener(evt,function(){
+        updateActivity();
+        if(idleWarningShown){
+            var warnings=document.querySelectorAll('.toast-warning');
+            warnings.forEach(function(w){w.remove()});
+            idleWarningShown=false;
+        }
+    },{passive:true});
+});
+updateActivity();
+
+var deviceKickDetected=false;
+setInterval(function(){
+    if(!localStorage.getItem('token'))return;
+    // Idle timeout check
+    if(localStorage.getItem('rememberMe')!=='true'){
+        var last=parseInt(localStorage.getItem('lastActivity')||'0');
+        var idleMs=Date.now()-last;
+        if(idleMs>=IDLE_TIMEOUT){
+            showToast('error','Session Expired','You have been logged out due to 15 minutes of inactivity.',0);
+            setTimeout(function(){
+                localStorage.removeItem('token');
+                localStorage.removeItem('lastActivity');
+                window.location.href='/SmartCMS/login';
+            },3000);
+            return;
+        }else if(idleMs>=IDLE_TIMEOUT-60000&&!idleWarningShown){
+            showToast('warning','Session Expiring','Your session will expire in 1 minute due to inactivity.',0);
+            idleWarningShown=true;
+        }
+    }
+    // Device kick check
+    if(!deviceKickDetected){
+        fetch('/api/v1/me',{headers:{'Authorization':'Bearer '+token}})
+        .then(function(res){
+            if(res.status===401){
+                deviceKickDetected=true;
+                showToast('error','Session Ended','Your account was logged in from another device.',0);
+                setTimeout(function(){
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('lastActivity');
+                    window.location.href='/SmartCMS/login';
+                },3000);
+            }
+        }).catch(function(){});
+    }
+},30000);
+
+function logout(){localStorage.removeItem('token');localStorage.removeItem('lastActivity');window.location.href='/SmartCMS/login'}
+document.addEventListener('DOMContentLoaded',init);
+document.querySelectorAll('.modal-overlay').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)m.style.display='none'})});
+</script>
+</body>
+</html>

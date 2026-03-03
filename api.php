@@ -39,6 +39,22 @@ try {
     echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
     exit;
 }
+// Auto-reload Asterisk when telephony-related tables change
+function reloadAsterisk() {
+    $commands = [
+        'docker exec asterisk asterisk -rx "module reload res_pjsip.so" 2>&1',
+        'docker exec asterisk asterisk -rx "module reload res_pjsip_outbound_registration.so" 2>&1',
+        'docker exec asterisk asterisk -rx "dialplan reload" 2>&1',
+        'docker exec asterisk asterisk -rx "module reload func_odbc.so" 2>&1',
+    ];
+    $results = [];
+    foreach ($commands as $cmd) {
+        $results[] = trim(shell_exec($cmd) ?? '');
+    }
+    return $results;
+}
+
+
 
 // Parse request
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -50,6 +66,16 @@ if (preg_match('#/api/v1/(.*)#', $uri, $matches)) {
 } else {
     $uri = str_replace(['/api/v1/', '/api/'], '', $uri);
 }
+
+// ── System Log helper ──────────────────────────────────────────────────────
+function logSystemEvent($pdo, $userId, $userName, $category, $action, $target, $description, $details = null, $status = 'success') {
+    try {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $stmt = $pdo->prepare("INSERT INTO system_logs (user_id, user_name, category, action, target, description, details, ip_address, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([$userId, $userName, $category, $action, $target, $description, $details ? json_encode($details) : null, $ip, $status]);
+    } catch (Exception $e) { /* silent fail */ }
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
@@ -112,6 +138,232 @@ $tableMap = [
 ];
 
 $table = $tableMap[$resource] ?? null;
+
+// == CMS Groups CRUD ==
+if ($resource === 'cms-groups' && $method === 'GET' && !$id) {
+    $rows = $pdo->query(
+        "SELECT g.*, c.name AS company_name,
+                (SELECT COUNT(*) FROM users u2 WHERE u2.group_id = g.id) AS user_count
+         FROM cms_groups g
+         LEFT JOIN customers c ON g.company_id = c.id
+         ORDER BY g.id"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['data' => $rows]);
+    exit;
+}
+if ($resource === 'cms-groups' && $method === 'GET' && $id) {
+    $stmt = $pdo->prepare(
+        "SELECT g.*, c.name AS company_name
+         FROM cms_groups g
+         LEFT JOIN customers c ON g.company_id = c.id
+         WHERE g.id = ?"
+    );
+    $stmt->execute([(int)$id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) { http_response_code(404); echo json_encode(['error' => 'Group not found']); exit; }
+    echo json_encode(['data' => $row]);
+    exit;
+}
+if ($resource === 'cms-groups' && $method === 'POST' && !$id) {
+    $gName = trim($input['name'] ?? '');
+    $gCompany = !empty($input['company_id']) ? (int)$input['company_id'] : null;
+    $gDesc = trim($input['description'] ?? '') ?: null;
+    $gActive = isset($input['is_active']) ? (int)(bool)$input['is_active'] : 1;
+    if (!$gName) { http_response_code(400); echo json_encode(['error' => 'Group name is required']); exit; }
+    $pdo->prepare("INSERT INTO cms_groups (name, company_id, description, is_active, created_at, updated_at) VALUES (?,?,?,?,NOW(),NOW())")
+        ->execute([$gName, $gCompany, $gDesc, $gActive]);
+    $newGid = $pdo->lastInsertId();
+    http_response_code(201);
+    echo json_encode(['success' => true, 'id' => $newGid, 'message' => 'Group created']);
+    exit;
+}
+if ($resource === 'cms-groups' && in_array($method, ['PUT','PATCH']) && $id) {
+    $gid = (int)$id;
+    $exists = $pdo->prepare("SELECT id FROM cms_groups WHERE id = ?");
+    $exists->execute([$gid]);
+    if (!$exists->fetch()) { http_response_code(404); echo json_encode(['error' => 'Group not found']); exit; }
+    $sets = []; $vals = [];
+    if (isset($input['name']))        { $sets[] = 'name = ?';        $vals[] = trim($input['name']); }
+    if (array_key_exists('company_id', $input))  { $sets[] = 'company_id = ?';  $vals[] = !empty($input['company_id']) ? (int)$input['company_id'] : null; }
+    if (isset($input['description'])) { $sets[] = 'description = ?'; $vals[] = trim($input['description']) ?: null; }
+    if (isset($input['is_active']))   { $sets[] = 'is_active = ?';   $vals[] = (int)(bool)$input['is_active']; }
+    if ($sets) {
+        $sets[] = 'updated_at = NOW()';
+        $vals[] = $gid;
+        $pdo->prepare("UPDATE cms_groups SET " . implode(', ', $sets) . " WHERE id = ?")->execute($vals);
+    }
+    echo json_encode(['success' => true, 'message' => 'Group updated']);
+    exit;
+}
+if ($resource === 'cms-groups' && $method === 'DELETE' && $id) {
+    $gid = (int)$id;
+    $chkU = $pdo->prepare("SELECT COUNT(*) FROM users WHERE group_id = ?");
+    $chkU->execute([$gid]);
+    if ((int)$chkU->fetchColumn() > 0) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Cannot delete: users are still assigned to this group']);
+        exit;
+    }
+    $pdo->prepare("DELETE FROM cms_groups WHERE id = ?")->execute([$gid]);
+    echo json_encode(['success' => true, 'message' => 'Group deleted']);
+    exit;
+}
+
+// == GET /v1/servers-list ==
+if ($resource === 'servers-list' && $method === 'GET' && !$id) {
+    $csRows = $pdo->query("SELECT id, name FROM call_servers WHERE type = 'asterisk' ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+    $sbcRows = $pdo->query("SELECT id, name FROM call_servers WHERE type = 'sbc' ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['call_servers' => $csRows, 'sbc_servers' => $sbcRows]);
+    exit;
+}
+
+
+
+// Custom GET for device-3rd-parties with real-time Asterisk SIP status
+if ($resource === 'device-3rd-parties' && $method === 'GET' && $id === null) {
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    try {
+        $query = "SELECT d.*, cs.name as cs_name, cs.id as cs_id FROM device_3rd_parties d LEFT JOIN call_servers cs ON d.call_server_id = cs.id";
+        $params = [];
+        if (isset($_GET['call_server_id']) && $_GET['call_server_id']) {
+            $query .= " WHERE d.call_server_id = ?";
+            $params[] = $_GET['call_server_id'];
+        }
+        $query .= " ORDER BY d.id DESC";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Query Asterisk for endpoint statuses
+        $endpointStatuses = [];
+        try {
+            $ami = @fsockopen('127.0.0.1', 5038, $errno, $errstr, 3);
+            if ($ami) {
+                stream_set_timeout($ami, 5);
+                fgets($ami, 256);
+                fputs($ami, "Action: Login
+Username: smartcms
+Secret: smartcms_ami_secret_2026
+
+");
+                $buf = ''; $t = microtime(true) + 4;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $buf .= fgets($ami, 512);
+                    if (substr_count($buf, "
+
+") >= 1) break;
+                }
+
+                // Get all contacts for status
+                fputs($ami, "Action: Command
+Command: pjsip show contacts
+ActionID: d3p
+
+");
+                $out = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $out .= fgets($ami, 4096);
+                    if (strpos($out, '--END COMMAND--') !== false) break;
+                }
+                foreach (explode("
+", $out) as $line) {
+                    // Match: Contact: <ext>/<uri> <hash> <Status> <RTT>
+                    if (preg_match('/Contact:\s+(\S+)\/(\S+)\s+\S+\s+(Avail|Unavail|NonQual|Unmonitored)\s+([\d.nan]+)/', $line, $m)) {
+                        $aor = $m[1];
+                        $uri = $m[2];
+                        $status = $m[3];
+                        $rtt = $m[4];
+                        $endpointStatuses[$aor] = ['status' => $status, 'uri' => $uri, 'rtt' => $rtt];
+                    }
+                }
+
+                // Get device states for in-use/ringing detection
+                fputs($ami, "Action: Command
+Command: pjsip show endpoints
+ActionID: d3p2
+
+");
+                $epOut = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $epOut .= fgets($ami, 4096);
+                    if (strpos($epOut, '--END COMMAND--') !== false) break;
+                }
+                foreach (explode("
+", $epOut) as $line) {
+                    // Match: Endpoint:  <name>   <status>   <channels> of <max>
+                    if (preg_match('/Endpoint:\s+(\S+)\s+(Not in use|In use|Ringing|Busy|Unavailable|Invalid)/', $line, $m)) {
+                        $epName = trim($m[1]);
+                        $epState = trim($m[2]);
+                        if (isset($endpointStatuses[$epName])) {
+                            $endpointStatuses[$epName]['device_state'] = $epState;
+                        } else {
+                            $endpointStatuses[$epName] = ['status' => 'Unavail', 'device_state' => $epState];
+                        }
+                    }
+                }
+
+                fputs($ami, "Action: Logoff
+
+");
+                fclose($ami);
+            }
+        } catch (Exception $e) { /* AMI unavailable */ }
+
+        // Enrich devices with SIP status
+        $result = [];
+        foreach ($devices as $dev) {
+            $ext = $dev['extension'];
+            $sipStatus = 'offline';
+            $contactUri = null;
+
+            if ($ext && isset($endpointStatuses[$ext])) {
+                $es = $endpointStatuses[$ext];
+                $devState = $es['device_state'] ?? '';
+
+                if ($devState === 'In use' || $devState === 'Busy') {
+                    $sipStatus = 'in_use';
+                } elseif ($devState === 'Ringing') {
+                    $sipStatus = 'ringing';
+                } elseif ($es['status'] === 'Avail' || $es['status'] === 'NonQual' || $es['status'] === 'Unmonitored') {
+                    $sipStatus = 'online';
+                } elseif ($devState === 'Not in use') {
+                    $sipStatus = 'online';
+                }
+
+                $contactUri = $es['uri'] ?? null;
+            }
+
+            $result[] = [
+                'id' => (int)$dev['id'],
+                'call_server_id' => $dev['call_server_id'] ? (int)$dev['call_server_id'] : null,
+                'name' => $dev['name'],
+                'extension' => $dev['extension'],
+                'username' => $dev['username'],
+                'password' => $dev['password'],
+                'mac_address' => $dev['mac_address'],
+                'ip_address' => $dev['ip_address'],
+                'device_type' => $dev['device_type'],
+                'manufacturer' => $dev['manufacturer'],
+                'model' => $dev['model'],
+                'description' => $dev['description'],
+                'is_active' => (int)$dev['is_active'],
+                'created_at' => $dev['created_at'],
+                'updated_at' => $dev['updated_at'],
+                'sip_status' => $sipStatus,
+                'contact_uri' => $contactUri,
+                'call_server' => $dev['cs_id'] ? ['id' => (int)$dev['cs_id'], 'name' => $dev['cs_name']] : null,
+            ];
+        }
+
+        echo json_encode(['data' => $result, 'total' => count($result)]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 
 // Login endpoint
 if ($resource === 'login' && $method === 'POST') {
@@ -216,7 +468,31 @@ if ($resource === 'permissions' && $method === 'GET') {
             ];
         }
 
-        echo json_encode(['success' => true, 'data' => $permMap, 'role' => $role]);
+        // Compute locked_pages: pages that parent role has can_view=0
+        $lockedPages = [];
+        $parentRoleName = null;
+        try {
+            $lvlStmt = $pdo->prepare("SELECT level FROM roles WHERE name = ?");
+            $lvlStmt->execute([$role]);
+            $lvlRow = $lvlStmt->fetch(PDO::FETCH_ASSOC);
+            if ($lvlRow) {
+                $roleLevel = (int)$lvlRow['level'];
+                // Parent: superroot(1)->none, admin(2)->superroot, level3+->admin
+                if ($roleLevel > 1) {
+                    $parentStmt = $pdo->prepare("SELECT name FROM roles WHERE level < ? ORDER BY level DESC LIMIT 1");
+                    $parentStmt->execute([$roleLevel]);
+                    $parentRow = $parentStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($parentRow) {
+                        $parentRoleName = $parentRow['name'];
+                        $lkStmt = $pdo->prepare("SELECT page_key FROM role_permissions WHERE role = ? AND can_view = 0");
+                        $lkStmt->execute([$parentRoleName]);
+                        $lockedPages = array_column($lkStmt->fetchAll(PDO::FETCH_ASSOC), 'page_key');
+                    }
+                }
+            }
+        } catch (Exception $ignored) {}
+
+        echo json_encode(['success' => true, 'data' => $permMap, 'role' => $role, 'locked_pages' => $lockedPages, 'parent_role' => $parentRoleName]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => 'Failed to fetch permissions: ' . $e->getMessage()]);
@@ -328,6 +604,8 @@ if ($resource === 'stats' && $method === 'GET') {
             'branch' => getStats($pdo, 'branches'),
             'subBranch' => getStats($pdo, 'sub_branches'),
             'callServer' => getStats($pdo, 'call_servers'),
+            'callServerOnly' => ['active' => (int)($pdo->query("SELECT COUNT(*) FROM call_servers WHERE type='asterisk' AND is_active=1")->fetchColumn() ?: 0), 'inactive' => (int)($pdo->query("SELECT COUNT(*) FROM call_servers WHERE type='asterisk' AND is_active=0")->fetchColumn() ?: 0)],
+            'sbcServer' => ['active' => (int)($pdo->query("SELECT COUNT(*) FROM call_servers WHERE type='sbc' AND is_active=1")->fetchColumn() ?: 0), 'inactive' => (int)($pdo->query("SELECT COUNT(*) FROM call_servers WHERE type='sbc' AND is_active=0")->fetchColumn() ?: 0)],
 
             // Row 2: Line
             'line' => getStats($pdo, 'lines'),
@@ -437,6 +715,234 @@ if ($resource === 'usage-report' && $method === 'GET') {
 
 
 // SBC Status Monitor - list all SBCs with connection status
+if ($resource === 'sbc-status-live' && $method === 'GET') {
+    try {
+        // Get all SBCs from DB
+        $stmt = $pdo->query("SELECT s.id, s.name, s.sip_server, s.sip_server_port, s.qualify, s.maxchans, s.disabled, cs.name as call_server_name FROM sbcs s LEFT JOIN call_servers cs ON s.call_server_id = cs.id ORDER BY s.id");
+        $sbcs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Build SBC name lookup
+        $sbcNames = [];
+        foreach ($sbcs as $sbc) {
+            $sbcNames['sbc-' . $sbc['id']] = $sbc['name'];
+        }
+        // Also get trunk names
+        $trunkStmt = $pdo->query("SELECT id, name FROM trunks");
+        $trunkNames = [];
+        foreach ($trunkStmt->fetchAll(PDO::FETCH_ASSOC) as $tr) {
+            $trunkNames['trunk-' . $tr['id']] = $tr['name'];
+        }
+        // Also get extension names
+        $extStmt = $pdo->query("SELECT extension, name FROM extensions");
+        $extNames = [];
+        foreach ($extStmt->fetchAll(PDO::FETCH_ASSOC) as $ext) {
+            $extNames[$ext['extension']] = $ext['name'];
+        }
+
+        $results = [];
+        $contactData = [];
+        $channelCounts = [];
+        $rawChannelLines = [];
+
+        // Query Asterisk AMI once for all data
+        try {
+            $ami = @fsockopen('127.0.0.1', 5038, $errno, $errstr, 3);
+            if ($ami) {
+                stream_set_timeout($ami, 5);
+                fgets($ami, 256);
+
+                fputs($ami, "Action: Login
+Username: smartcms
+Secret: smartcms_ami_secret_2026
+
+");
+                $buf = ''; $t = microtime(true) + 4;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $buf .= fgets($ami, 512);
+                    if (substr_count($buf, "
+
+") >= 1) break;
+                }
+
+                // Get all contacts
+                fputs($ami, "Action: Command
+Command: pjsip show contacts
+ActionID: c1
+
+");
+                $out = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $out .= fgets($ami, 4096);
+                    if (strpos($out, '--END COMMAND--') !== false) break;
+                }
+                foreach (explode("
+", $out) as $line) {
+                    if (preg_match('/Contact:\s+(sbc-\d+)\/(\S+)\s+\S+\s+(Avail|Unavail|NonQual|Unmonitored)\s+([\d.nan]+)/', $line, $m)) {
+                        $contactData[$m[1]] = ['uri' => $m[2], 'status' => $m[3], 'rtt' => $m[4]];
+                    }
+                }
+
+                // Get all channels (concise format)
+                fputs($ami, "Action: Command
+Command: core show channels concise
+ActionID: c2
+
+");
+                $chOut = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $chOut .= fgets($ami, 4096);
+                    if (strpos($chOut, '--END COMMAND--') !== false) break;
+                }
+                foreach (explode("
+", $chOut) as $line) {
+                    if (preg_match('/PJSIP\/(sbc-\d+)-/', $line, $m)) {
+                        $channelCounts[$m[1]] = ($channelCounts[$m[1]] ?? 0) + 1;
+                    }
+                    if (preg_match('/PJSIP\/(trunk-\d+)-/', $line, $m)) {
+                        $channelCounts[$m[1]] = ($channelCounts[$m[1]] ?? 0) + 1;
+                    }
+                    if (strpos($line, 'PJSIP/') !== false && strpos($line, '!') !== false) {
+                        $rawChannelLines[] = trim($line);
+                    }
+                }
+
+                fputs($ami, "Action: Logoff
+
+");
+                fclose($ami);
+            }
+        } catch (Exception $amiEx) { /* AMI unavailable */ }
+
+        // Parse channel lines into structured data
+        $channels = [];
+        $seen = [];
+        foreach ($rawChannelLines as $rawLine) {
+            // Remove "Output: " prefix if present
+            $rawLine = preg_replace('/^Output:\s*/', '', $rawLine);
+            $parts = explode('!', $rawLine);
+            if (count($parts) < 8) continue;
+
+            $channelName = trim($parts[0]);  // PJSIP/sbc-31-00000001
+            $context = trim($parts[1]);       // from-sbc
+            $extension = trim($parts[2]);     // DID/number
+            $state = trim($parts[4]);         // Ring, Up
+            $duration = isset($parts[6]) ? (int)trim($parts[6]) : 0;
+            $bridged = isset($parts[7]) ? trim($parts[7]) : '';
+
+            // Extract endpoint name
+            $srcEndpoint = '';
+            if (preg_match('/PJSIP\/([^-]+-\d+)/', $channelName, $sm)) {
+                $srcEndpoint = $sm[1];
+            }
+            $dstEndpoint = '';
+            if (preg_match('/PJSIP\/([^-]+-\d+)/', $bridged, $dm)) {
+                $dstEndpoint = $dm[1];
+            }
+
+            // Deduplicate: each call has 2 channels, only show once
+            $pairKey = $channelName < $bridged ? $channelName . '|' . $bridged : $bridged . '|' . $channelName;
+            if (in_array($pairKey, $seen)) continue;
+            $seen[] = $pairKey;
+
+            // Get readable names
+            $srcLabel = $srcEndpoint;
+            if (isset($sbcNames[$srcEndpoint])) {
+                $srcLabel = $sbcNames[$srcEndpoint] . ' (' . $srcEndpoint . ')';
+            } elseif (isset($trunkNames[$srcEndpoint])) {
+                $srcLabel = $trunkNames[$srcEndpoint] . ' (' . $srcEndpoint . ')';
+            }
+
+            $dstLabel = $dstEndpoint;
+            if (isset($sbcNames[$dstEndpoint])) {
+                $dstLabel = $sbcNames[$dstEndpoint] . ' (' . $dstEndpoint . ')';
+            } elseif (isset($trunkNames[$dstEndpoint])) {
+                $dstLabel = $trunkNames[$dstEndpoint] . ' (' . $dstEndpoint . ')';
+            } elseif (empty($dstEndpoint) && !empty($bridged)) {
+                // Bridged to extension or other non-SBC/trunk
+                if (preg_match('/PJSIP\/(\d+)-/', $bridged, $em)) {
+                    $extNum = $em[1];
+                    $dstLabel = isset($extNames[$extNum]) ? $extNames[$extNum] . ' (' . $extNum . ')' : 'Ext ' . $extNum;
+                } else {
+                    $dstLabel = $bridged;
+                }
+            } elseif (empty($dstEndpoint) && empty($bridged)) {
+                $dstLabel = $extension ? $extension : '(ringing)';
+            }
+
+            // Format duration
+            $durStr = sprintf('%02d:%02d:%02d', floor($duration/3600), floor(($duration%3600)/60), $duration%60);
+
+            // Source display
+            $sourceDisplay = $srcLabel;
+            if (!empty($extension)) {
+                $sourceDisplay .= ' → ' . $extension;
+            }
+
+            $channels[] = [
+                'channel' => $channelName,
+                'source' => $sourceDisplay,
+                'destination' => $dstLabel,
+                'duration' => $durStr,
+                'state' => $state,
+            ];
+        }
+
+        $summary = ['total' => 0, 'online' => 0, 'offline' => 0, 'nonqual' => 0, 'active_calls' => count($channels), 'active_channels' => array_sum($channelCounts)];
+
+        foreach ($sbcs as $sbc) {
+            $ep = 'sbc-' . $sbc['id'];
+            $contact = $contactData[$ep] ?? null;
+            $calls = $channelCounts[$ep] ?? 0;
+
+            $status = 'Unknown';
+            $rtt = null;
+            $contactUri = null;
+
+            if ($contact) {
+                $contactUri = $contact['uri'];
+                if ($contact['status'] === 'Avail') {
+                    $status = 'Avail';
+                    $rtt = ($contact['rtt'] !== 'nan') ? round(floatval($contact['rtt']), 1) : null;
+                    $summary['online']++;
+                } elseif ($contact['status'] === 'NonQual') {
+                    $status = 'NonQual';
+                    $summary['nonqual']++;
+                } elseif ($contact['status'] === 'Unavail') {
+                    $status = 'Unavail';
+                    $summary['offline']++;
+                } else {
+                    $status = $contact['status'];
+                }
+            } else {
+                $summary['offline']++;
+            }
+
+            $summary['total']++;
+
+            $results[] = [
+                'id' => (int)$sbc['id'],
+                'name' => $sbc['name'],
+                'endpoint' => $ep,
+                'sip_server' => $sbc['sip_server'],
+                'sip_server_port' => (int)$sbc['sip_server_port'],
+                'contact' => $contactUri,
+                'status' => $status,
+                'rtt_ms' => $rtt,
+                'active_channels' => $calls,
+                'max_channels' => $sbc['maxchans'] ? (int)$sbc['maxchans'] : null,
+                'qualify' => (int)$sbc['qualify'],
+                'is_active' => !$sbc['disabled'],
+                'call_server' => $sbc['call_server_name'],
+            ];
+        }
+
+        echo json_encode(['success' => true, 'data' => ['sbcs' => $results, 'summary' => $summary, 'channels' => $channels], 'timestamp' => date('Y-m-d H:i:s')]);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($resource === 'sbc-status' && $id === null && $method === 'GET') {
     try {
         $query = "SELECT s.*, cs.name as call_server_name FROM sbcs s LEFT JOIN call_servers cs ON s.call_server_id = cs.id";
@@ -550,16 +1056,20 @@ if (preg_match('/^sbc-status\/(\d+)$/', $resource . '/' . $id, $matches)) {
                             $status = $m[1]; $rtt = floatval($m[2]);
                             if ($status === 'Avail') {
                                 $result['connection_status'] = 'OK';
+                                $result['registration_status'] = 'REGISTERED';
                                 $result['latency_ms'] = round($rtt, 2);
+                            } elseif ($status === 'NonQual') {
+                                $result['connection_status'] = 'OK';
+                                $result['registration_status'] = 'REGISTERED';
                             } elseif ($status === 'Unavail') {
                                 $result['connection_status'] = 'UNREACHABLE';
+                                $result['registration_status'] = 'FAILED';
+                            } elseif ($status === 'Unmonitored') {
+                                $result['connection_status'] = 'OK';
+                                $result['registration_status'] = 'REGISTERED';
                             } else {
                                 $result['connection_status'] = 'UNKNOWN';
                             }
-                        } elseif (strpos($line, 'NonQual') !== false) {
-                            $result['connection_status'] = 'UNKNOWN';
-                        } elseif (strpos($line, 'Unavail') !== false) {
-                            $result['connection_status'] = 'UNREACHABLE';
                         }
                         break;
                     }
@@ -658,7 +1168,7 @@ if ($resource === 'topology' && $method === 'GET') {
             $brSql = "SELECT 
                 b.id, b.name, b.code, b.head_office_id, b.customer_id,
                 b.call_server_id, b.sbc_id,
-                cs.host as ip,
+                cs.host as ip, cs.type as server_type,
                 c.name as company_name,
                 sbc.name as sbc_name
             FROM branches b
@@ -671,7 +1181,7 @@ if ($resource === 'topology' && $method === 'GET') {
             $brSql = "SELECT 
                 b.id, b.name, b.code, b.head_office_id, b.customer_id,
                 b.call_server_id, NULL as sbc_id,
-                cs.host as ip,
+                cs.host as ip, cs.type as server_type,
                 c.name as company_name,
                 NULL as sbc_name
             FROM branches b
@@ -687,7 +1197,7 @@ if ($resource === 'topology' && $method === 'GET') {
 
         // Add branch nodes and edges
         foreach ($branches as $br) {
-            $hasSbc = !empty($br['sbc_id']);
+            $hasSbc = !empty($br['sbc_id']) || (isset($br['server_type']) && $br['server_type'] === 'sbc');
 
             $nodes[] = [
                 'id' => 'br_' . $br['id'],
@@ -711,53 +1221,8 @@ if ($resource === 'topology' && $method === 'GET') {
         }
 
 
-        // ---- CALL SERVERS (standalone nodes) ----
-        $nodeTrack=[];
-        foreach ($nodes as $nd) $nodeTrack[$nd['id']]=true;
-        try {
-            $csAll2=$pdo->query('SELECT * FROM call_servers WHERE is_active=1')->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($csAll2 as $cs) {
-                $csnid='cs_'.$cs['id'];
-                if (isset($nodeTrack[$csnid])) continue;
-                $csIp=$cs['host']??'N/A'; $csPort=$cs['port']??5060;
-                $nodes[]=['id'=>$csnid,'label'=>$cs['name'].chr(10).'IP: '.$csIp,'title'=>'Call Server: '.$cs['name'].chr(10).'IP: '.$csIp.':'.$csPort,'group'=>($cs['type']==='sbc')?'sbc':'callserver','ip'=>$csIp];
-                $nodeTrack[$csnid]=true;
-            }
-        } catch (Exception $e) {}
-        // ---- TRUNKS ----
-        try {
-            $trs2=$pdo->query('SELECT id,name,sip_server,sip_server_port,call_server_id FROM trunks')->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($trs2 as $tr) {
-                $tnid='trunk_'.$tr['id']; if (isset($nodeTrack[$tnid])) continue;
-                $tip=$tr['sip_server']??'N/A'; $tport=$tr['sip_server_port']??5060;
-                $tiplbl=($tip&&$tip!=='N/A')?$tip.':'.$tport:'N/A';
-                $nodes[]=['id'=>$tnid,'label'=>'trunk-'.$tr['id'].chr(10).$tr['name'].chr(10).'IP: '.$tiplbl,'title'=>'Trunk: '.$tr['name'].chr(10).'IP: '.$tiplbl,'group'=>'trunk','ip'=>$tip];
-                $nodeTrack[$tnid]=true;
-                if ($tr['call_server_id']) $edges[]=['from'=>'cs_'.$tr['call_server_id'],'to'=>$tnid,'label'=>'trunk','color'=>'#f59e0b'];
-            }
-        } catch (Exception $e) {}
-        // ---- SBCS ----
-        try {
-            $sbcrows2=$pdo->query('SELECT * FROM sbcs')->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($sbcrows2 as $sbc) {
-                $snid='sbc_'.$sbc['id']; if (isset($nodeTrack[$snid])) continue;
-                $sip=$sbc['sip_server']??'N/A'; $sport=$sbc['sip_server_port']??5060;
-                $siplbl=($sip&&$sip!=='N/A')?$sip.':'.$sport:'N/A';
-                $nodes[]=['id'=>$snid,'label'=>'sbc-'.$sbc['id'].chr(10).$sbc['name'].chr(10).'IP: '.$siplbl,'title'=>'SBC: '.$sbc['name'].chr(10).'IP: '.$siplbl,'group'=>'sbc','ip'=>$sip];
-                $nodeTrack[$snid]=true;
-                if (!empty($sbc['call_server_id'])) $edges[]=['from'=>'cs_'.$sbc['call_server_id'],'to'=>$snid,'label'=>'SBC','color'=>'#8b5cf6'];
-            }
-        } catch (Exception $e) {}
-        // ---- SBC BRIDGE ROUTES ----
-        try {
-            $rtrows2=$pdo->query('SELECT * FROM sbc_routes WHERE src_is_active=1 LIMIT 50')->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($rtrows2 as $rt) {
-                $fn=$rt['src_from_sbc_id']?'sbc_'.$rt['src_from_sbc_id']:'trunk_'.$rt['src_destination_id'];
-                $tn=$rt['dest_from_sbc_id']?'sbc_'.$rt['dest_from_sbc_id']:'trunk_'.$rt['dest_destination_id'];
-                if (isset($nodeTrack[$fn])&&isset($nodeTrack[$tn])) $edges[]=['from'=>$fn,'to'=>$tn,'label'=>'bridge','color'=>'#22c55e','dashes'=>true];
-            }
-        } catch (Exception $e) {}
-        // Get companies for filter dropdown
+
+                // Get companies for filter dropdown
         $companies = $pdo->query("SELECT id, name, code FROM customers WHERE is_active = 1 ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode([
@@ -918,6 +1383,97 @@ if ($resource === 'avatar' && $id && ($method === 'GET' || $method === 'HEAD')) 
 }
 
 // Get current user profile endpoint
+// ── POST /v1/change-password ────────────────────────────────────────────────
+if ($resource === 'change-password' && $method === 'POST') {
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (!preg_match('/Bearer\s+(.+)/i', $authHeader, $_cpTok)) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Unauthorized']); exit;
+    }
+    $cpStmt = $pdo->prepare("SELECT id, password FROM users WHERE remember_token = ? AND is_active = 1");
+    $cpStmt->execute([trim($_cpTok[1])]);
+    $cpUser = $cpStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$cpUser) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Session expired']); exit;
+    }
+    $currentPw  = $input['current_password'] ?? '';
+    $newPw      = $input['new_password'] ?? '';
+    $confirmPw  = $input['confirm_password'] ?? '';
+    if (!$currentPw || !$newPw || !$confirmPw) {
+        http_response_code(400);
+        echo json_encode(['error' => 'All fields are required']); exit;
+    }
+    if (!password_verify($currentPw, $cpUser['password'])) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Current password is incorrect']); exit;
+    }
+    if ($newPw !== $confirmPw) {
+        http_response_code(400);
+        echo json_encode(['error' => 'New passwords do not match']); exit;
+    }
+    if (strlen($newPw) < 8) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Password must be at least 8 characters']); exit;
+    }
+    $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW() WHERE id = ?")
+        ->execute([password_hash($newPw, PASSWORD_BCRYPT), $cpUser['id']]);
+    // Log activity
+    $pdo->prepare("INSERT INTO activity_logs (user_id, action, entity_type, ip_address, user_agent, created_at) VALUES (?, 'updated', 'password', ?, ?, NOW())")
+        ->execute([$cpUser['id'], $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '']);
+    echo json_encode(['success' => true, 'message' => 'Password changed successfully']); exit;
+}
+
+// ── GET /v1/system-logs ────────────────────────────────────────────────────────
+if ($resource === 'system-logs' && $method === 'GET') {
+    $page = max(1, (int)($_GET['page'] ?? 1));
+    $perPage = min(100, max(10, (int)($_GET['per_page'] ?? 50)));
+    $offset = ($page - 1) * $perPage;
+
+    $where = [];
+    $params = [];
+
+    if (!empty($_GET['category'])) {
+        $where[] = 'sl.category = ?';
+        $params[] = $_GET['category'];
+    }
+    if (!empty($_GET['action'])) {
+        $where[] = 'sl.action = ?';
+        $params[] = $_GET['action'];
+    }
+    if (!empty($_GET['status'])) {
+        $where[] = 'sl.status = ?';
+        $params[] = $_GET['status'];
+    }
+    if (!empty($_GET['search'])) {
+        $where[] = '(sl.description LIKE ? OR sl.target LIKE ? OR sl.user_name LIKE ?)';
+        $s = '%' . $_GET['search'] . '%';
+        $params[] = $s;
+        $params[] = $s;
+        $params[] = $s;
+    }
+
+    $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM system_logs sl $whereSql");
+    $countStmt->execute($params);
+    $total = (int)$countStmt->fetchColumn();
+
+    $stmt = $pdo->prepare("SELECT sl.* FROM system_logs sl $whereSql ORDER BY sl.id DESC LIMIT $perPage OFFSET $offset");
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'data' => $rows,
+        'current_page' => $page,
+        'per_page' => $perPage,
+        'total' => $total,
+        'last_page' => $total > 0 ? (int)ceil($total / $perPage) : 0
+    ]);
+    exit;
+}
+
 if ($resource === 'me' && $method === 'GET') {
     // Validate by Bearer token only — no user_id required
     // This enables single-device enforcement: new login overwrites token in DB
@@ -1318,7 +1874,7 @@ if ($resource === 'backup') {
 }
 
 // ============================================================
-// CMS POLICIES API  (role-hierarchy aware)
+// CMS POLICIES API  (role-hierarchy aware + page permissions)
 // ============================================================
 if ($resource === 'cms-policies') {
     // Auth
@@ -1355,6 +1911,48 @@ if ($resource === 'cms-policies') {
         'can_manage_trunks','can_manage_sbc','can_manage_call_servers',
     ];
 
+    // Helper: load page-based permissions for a policy
+    $loadPagePerms = function($policyId) use ($pdo) {
+        try {
+            $s = $pdo->prepare("SELECT page_key, can_view, can_create, can_edit, can_delete FROM cms_policy_permissions WHERE policy_id = ? ORDER BY page_key");
+            $s->execute([(int)$policyId]);
+            $rows = $s->fetchAll(PDO::FETCH_ASSOC);
+            $out = [];
+            foreach ($rows as $r) {
+                $out[$r['page_key']] = [
+                    'can_view'   => (bool)$r['can_view'],
+                    'can_create' => (bool)$r['can_create'],
+                    'can_edit'   => (bool)$r['can_edit'],
+                    'can_delete' => (bool)$r['can_delete'],
+                ];
+            }
+            return $out;
+        } catch (Exception $e) { return []; }
+    };
+
+    // Helper: save page-based permissions for a policy
+    $savePagePerms = function($policyId, $permissions) use ($pdo) {
+        if (!is_array($permissions)) return;
+        try {
+            $stmt = $pdo->prepare(
+                "INSERT INTO cms_policy_permissions (policy_id, page_key, can_view, can_create, can_edit, can_delete)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE can_view=VALUES(can_view), can_create=VALUES(can_create),
+                 can_edit=VALUES(can_edit), can_delete=VALUES(can_delete)"
+            );
+            foreach ($permissions as $pageKey => $perms) {
+                $stmt->execute([
+                    (int)$policyId,
+                    (string)$pageKey,
+                    isset($perms['can_view'])   ? (int)(bool)$perms['can_view']   : 0,
+                    isset($perms['can_create']) ? (int)(bool)$perms['can_create'] : 0,
+                    isset($perms['can_edit'])   ? (int)(bool)$perms['can_edit']   : 0,
+                    isset($perms['can_delete']) ? (int)(bool)$perms['can_delete'] : 0,
+                ]);
+            }
+        } catch (Exception $e) { /* ignore */ }
+    };
+
     // ---- GET /v1/cms-policies  (list) ----
     if ($method === 'GET' && !$id) {
         $stmt = $pdo->prepare(
@@ -1363,11 +1961,12 @@ if ($resource === 'cms-policies') {
         );
         $stmt->execute([$myLevel]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        // Cast booleans
+        // Cast booleans + load page permissions
         foreach ($rows as &$r) {
             foreach ($permCols as $c) { $r[$c] = (bool)$r[$c]; }
             $r['is_active'] = (bool)$r['is_active'];
             $r['level'] = (int)$r['level'];
+            $r['permissions'] = $loadPagePerms($r['id']);
         }
         echo json_encode(['data' => $rows, 'my_level' => $myLevel]);
         exit;
@@ -1385,6 +1984,7 @@ if ($resource === 'cms-policies') {
         foreach ($permCols as $c) { $row[$c] = (bool)($row[$c] ?? false); }
         $row['is_active'] = (bool)$row['is_active'];
         $row['level'] = (int)$row['level'];
+        $row['permissions'] = $loadPagePerms($row['id']);
         echo json_encode(['data' => $row]);
         exit;
     }
@@ -1420,12 +2020,18 @@ if ($resource === 'cms-policies') {
         $pdo->prepare("INSERT INTO cms_policies ($colList) VALUES ($placeholders)")->execute($vals);
         $newId = $pdo->lastInsertId();
 
+        // Save page permissions if provided
+        if (!empty($input['permissions'])) {
+            $savePagePerms($newId, $input['permissions']);
+        }
+
         $stmt = $pdo->prepare("SELECT * FROM cms_policies WHERE id = ?");
         $stmt->execute([$newId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         foreach ($permCols as $c) { $row[$c] = (bool)($row[$c] ?? false); }
         $row['is_active'] = (bool)$row['is_active'];
         $row['level'] = (int)$row['level'];
+        $row['permissions'] = $loadPagePerms($newId);
         http_response_code(201);
         echo json_encode(['success' => true, 'data' => $row]);
         exit;
@@ -1476,11 +2082,18 @@ if ($resource === 'cms-policies') {
             $setVals[] = $targetId;
             $pdo->prepare("UPDATE cms_policies SET " . implode(',', $setClauses) . " WHERE id = ?")->execute($setVals);
         }
+
+        // Save page permissions if provided
+        if (!empty($input['permissions'])) {
+            $savePagePerms($targetId, $input['permissions']);
+        }
+
         $stmt->execute([$targetId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         foreach ($permCols as $c) { $row[$c] = (bool)($row[$c] ?? false); }
         $row['is_active'] = (bool)$row['is_active'];
         $row['level'] = (int)$row['level'];
+        $row['permissions'] = $loadPagePerms($targetId);
         echo json_encode(['success' => true, 'data' => $row]);
         exit;
     }
@@ -1514,6 +2127,8 @@ if ($resource === 'cms-policies') {
             echo json_encode(['error' => "Policy is used by $userCount user(s). Reassign users before deleting."]);
             exit;
         }
+        // Delete page permissions first
+        $pdo->prepare("DELETE FROM cms_policy_permissions WHERE policy_id = ?")->execute([$targetId]);
         $pdo->prepare("DELETE FROM cms_policies WHERE id = ?")->execute([$targetId]);
         echo json_encode(['success' => true]);
         exit;
@@ -1524,18 +2139,17 @@ if ($resource === 'cms-policies') {
     exit;
 }
 
-// ============================================================
 // USERS LIST — hierarchy filter (only show users at >= caller's level)
 // ============================================================
 if ($resource === 'users' && $method === 'GET' && !$id) {
-    // Resolve caller's policy level
+    // Resolve caller's ROLE level (from roles table)
     $_uHeaders = function_exists('getallheaders') ? getallheaders() : [];
     $_uAuthH   = $_uHeaders['Authorization'] ?? $_uHeaders['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     $_uLevel   = 99;
     if (preg_match('/Bearer\s+(.+)/i', $_uAuthH, $_uTok)) {
         $_uStmt = $pdo->prepare(
-            "SELECT COALESCE(cp.level, 99) AS my_level
-             FROM users u LEFT JOIN cms_policies cp ON u.policy_id = cp.id
+            "SELECT COALESCE(r.level, 99) AS my_level
+             FROM users u LEFT JOIN roles r ON u.role = r.name
              WHERE u.remember_token = ? AND u.is_active = 1"
         );
         $_uStmt->execute([trim($_uTok[1])]);
@@ -1548,7 +2162,7 @@ if ($resource === 'users' && $method === 'GET' && !$id) {
     $perPage = max(1, intval($_GET['per_page'] ?? 50));
     $offset  = ($page - 1) * $perPage;
 
-    $where  = "WHERE COALESCE(cp.level, 99) >= ?";
+    $where  = "WHERE COALESCE(r.level, 99) >= ?";
     $params = [$_uLevel];
     if ($search) {
         $where   .= " AND (u.name LIKE ? OR u.email LIKE ?)";
@@ -1557,18 +2171,40 @@ if ($resource === 'users' && $method === 'GET' && !$id) {
     }
 
     $countStmt = $pdo->prepare(
-        "SELECT COUNT(*) FROM users u LEFT JOIN cms_policies cp ON u.policy_id = cp.id $where"
+        "SELECT COUNT(*) FROM users u
+         LEFT JOIN roles r ON u.role = r.name
+         LEFT JOIN cms_policies cp ON u.policy_id = cp.id
+         LEFT JOIN cms_groups cg ON u.group_id = cg.id $where"
     );
     $countStmt->execute($params);
     $total = (int)$countStmt->fetchColumn();
 
     $dataStmt = $pdo->prepare(
-        "SELECT u.*, cp.name AS policy_name, cp.level AS policy_level
-         FROM users u LEFT JOIN cms_policies cp ON u.policy_id = cp.id
+        "SELECT u.id, u.name, u.email, u.role, u.policy_id, u.group_id, u.is_active,
+                u.last_login, u.profile_image, u.created_at, u.updated_at,
+                cp.name AS policy_name, cp.level AS policy_level,
+                cg.name AS group_name
+         FROM users u
+         LEFT JOIN roles r ON u.role = r.name
+         LEFT JOIN cms_policies cp ON u.policy_id = cp.id
+         LEFT JOIN cms_groups cg ON u.group_id = cg.id
          $where ORDER BY u.id DESC LIMIT $perPage OFFSET $offset"
     );
     $dataStmt->execute($params);
     $rows = $dataStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Attach servers per user
+    $_srvStmt = $pdo->prepare(
+        "SELECT us.call_server_id, cs.name, cs.type
+         FROM user_servers us
+         LEFT JOIN call_servers cs ON us.call_server_id = cs.id
+         WHERE us.user_id = ?"
+    );
+    foreach ($rows as &$_ur) {
+        $_srvStmt->execute([$_ur['id']]);
+        $_ur['servers'] = $_srvStmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    unset($_ur);
 
     echo json_encode([
         'data'         => $rows,
@@ -1580,6 +2216,433 @@ if ($resource === 'users' && $method === 'GET' && !$id) {
     exit;
 }
 
+// ── Custom POST /v1/users ─────────────────────────────────────────────────
+if ($resource === 'users' && $method === 'POST' && !$id) {
+    $roleLevels = ['superroot'=>1,'super_admin'=>1,'admin'=>2,'operator'=>3,'viewer'=>3];
+    $myRole  = 'admin'; $myLevel = 2;
+    $_allH2  = function_exists('getallheaders') ? getallheaders() : [];
+    $_authH2 = $_allH2['Authorization'] ?? $_allH2['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (preg_match('/Bearer\s+(.+)/i', $_authH2, $_t2)) {
+        $_us2 = $pdo->prepare("SELECT role FROM users WHERE remember_token = ? AND is_active = 1");
+        $_us2->execute([trim($_t2[1])]);
+        $_row2 = $_us2->fetch(PDO::FETCH_ASSOC);
+        if ($_row2) $myRole = $_row2['role'];
+    }
+    $myLevel = $roleLevels[$myRole] ?? 2;
+
+    $name     = trim($input['name'] ?? '');
+    $email    = trim($input['email'] ?? '');
+    $password = $input['password'] ?? '';
+    $role     = $input['role'] ?? 'operator';
+    $policyId = !empty($input['policy_id']) ? (int)$input['policy_id'] : null;
+    $groupId  = !empty($input['group_id']) ? (int)$input['group_id'] : null;
+    $isActive = isset($input['is_active']) ? (int)(bool)$input['is_active'] : 1;
+
+    if (!$name || !$email) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Name and email are required']); exit;
+    }
+    if (!$password) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Password is required for new user']); exit;
+    }
+    $targetLevel = $roleLevels[$role] ?? 99;
+    if ($targetLevel < $myLevel) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Cannot assign role with higher privilege than yours']); exit;
+    }
+    $chk = $pdo->prepare("SELECT id FROM users WHERE email = ?");
+    $chk->execute([$email]);
+    if ($chk->fetch()) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Email already exists']); exit;
+    }
+    $stmt = $pdo->prepare(
+        "INSERT INTO users (name, email, password, role, policy_id, group_id, is_active, profile_image, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NOW(), NOW())"
+    );
+    $stmt->execute([$name, $email, password_hash($password, PASSWORD_BCRYPT), $role, $policyId, $groupId, $isActive]);
+    $newId = $pdo->lastInsertId();
+    // Sync user_servers
+    if (!empty($input['server_ids']) && is_array($input['server_ids'])) {
+        $_srvIns = $pdo->prepare("INSERT IGNORE INTO user_servers (user_id, call_server_id) VALUES (?, ?)");
+        foreach ($input['server_ids'] as $_sid) { $_srvIns->execute([$newId, (int)$_sid]); }
+    }
+    http_response_code(201);
+        logSystemEvent($pdo, $currentUserId, null, 'security', 'create', 'user', "Created user: " . ($input['name'] ?? $input['email'] ?? ""), ['email' => $input['email'] ?? '', 'role' => $input['role'] ?? '']);
+    echo json_encode(['success' => true, 'id' => $newId, 'message' => 'User created']); exit;
+}
+
+// ── Custom PUT /v1/users/{id} ─────────────────────────────────────────────
+if ($resource === 'users' && in_array($method, ['PUT','PATCH']) && $id) {
+    $targetId = (int)$id;
+    $roleLevels = ['superroot'=>1,'super_admin'=>1,'admin'=>2,'operator'=>3,'viewer'=>3];
+    $myRole  = 'admin'; $myLevel = 2; $myId = null;
+    $_allH3  = function_exists('getallheaders') ? getallheaders() : [];
+    $_authH3 = $_allH3['Authorization'] ?? $_allH3['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (preg_match('/Bearer\s+(.+)/i', $_authH3, $_t3)) {
+        $_us3 = $pdo->prepare("SELECT id, role FROM users WHERE remember_token = ? AND is_active = 1");
+        $_us3->execute([trim($_t3[1])]);
+        $_row3 = $_us3->fetch(PDO::FETCH_ASSOC);
+        if ($_row3) { $myRole = $_row3['role']; $myId = (int)$_row3['id']; }
+    }
+    $myLevel = $roleLevels[$myRole] ?? 2;
+
+    $target = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $target->execute([$targetId]);
+    $targetUser = $target->fetch(PDO::FETCH_ASSOC);
+    if (!$targetUser) {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']); exit;
+    }
+    $targetLevel = $roleLevels[$targetUser['role']] ?? 99;
+    if ($myRole !== 'superroot') {
+        if ($myLevel <= 2) {
+            // Admin: can edit same level and below, but not self-role-escalation check is separate
+            if ($targetLevel < $myLevel) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Cannot edit user with higher privilege']); exit;
+            }
+        } else {
+            // Operator+: can only edit lower privilege (not same level peers)
+            if ($targetLevel <= $myLevel) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Cannot edit user with same or higher privilege']); exit;
+            }
+        }
+    }
+
+    $name     = trim($input['name'] ?? $targetUser['name']);
+    $email    = trim($input['email'] ?? $targetUser['email']);
+    $role     = $input['role'] ?? $targetUser['role'];
+    $policyId = array_key_exists('policy_id', $input) ? (!empty($input['policy_id']) ? (int)$input['policy_id'] : null) : ($targetUser['policy_id'] ?: null);
+    $groupId  = array_key_exists('group_id', $input) ? (!empty($input['group_id']) ? (int)$input['group_id'] : null) : ($targetUser['group_id'] ?: null);
+    $isActive = isset($input['is_active']) ? (int)(bool)$input['is_active'] : (int)$targetUser['is_active'];
+    $password = $input['password'] ?? '';
+
+    $newTargetLevel = $roleLevels[$role] ?? 99;
+    if ($myRole !== 'superroot' && $newTargetLevel < $myLevel) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Cannot assign role with higher privilege than yours']); exit;
+    }
+    $chk2 = $pdo->prepare("SELECT id FROM users WHERE email = ? AND id != ?");
+    $chk2->execute([$email, $targetId]);
+    if ($chk2->fetch()) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Email already exists']); exit;
+    }
+
+    if ($password) {
+        $pdo->prepare("UPDATE users SET name=?, email=?, password=?, role=?, policy_id=?, group_id=?, is_active=?, updated_at=NOW() WHERE id=?")
+            ->execute([$name, $email, password_hash($password, PASSWORD_BCRYPT), $role, $policyId, $groupId, $isActive, $targetId]);
+    } else {
+        $pdo->prepare("UPDATE users SET name=?, email=?, role=?, policy_id=?, group_id=?, is_active=?, updated_at=NOW() WHERE id=?")
+            ->execute([$name, $email, $role, $policyId, $groupId, $isActive, $targetId]);
+    }
+    // Sync user_servers
+    if (array_key_exists('server_ids', $input)) {
+        $pdo->prepare("DELETE FROM user_servers WHERE user_id = ?")->execute([$targetId]);
+        if (is_array($input['server_ids'])) {
+            $_srvIns2 = $pdo->prepare("INSERT IGNORE INTO user_servers (user_id, call_server_id) VALUES (?, ?)");
+            foreach ($input['server_ids'] as $_sid2) { $_srvIns2->execute([$targetId, (int)$_sid2]); }
+        }
+    }
+    echo json_encode(['success' => true, 'message' => 'User updated']); exit;
+}
+
+// ── Custom DELETE /v1/users/{id} ──────────────────────────────────────────
+if ($resource === 'users' && $method === 'DELETE' && $id) {
+    $targetId = (int)$id;
+    $roleLevels = ['superroot'=>1,'super_admin'=>1,'admin'=>2,'operator'=>3,'viewer'=>3];
+    $myRole  = 'admin'; $myLevel = 2; $myId = null;
+    $_allH4  = function_exists('getallheaders') ? getallheaders() : [];
+    $_authH4 = $_allH4['Authorization'] ?? $_allH4['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (preg_match('/Bearer\s+(.+)/i', $_authH4, $_t4)) {
+        $_us4 = $pdo->prepare("SELECT id, role FROM users WHERE remember_token = ? AND is_active = 1");
+        $_us4->execute([trim($_t4[1])]);
+        $_row4 = $_us4->fetch(PDO::FETCH_ASSOC);
+        if ($_row4) { $myRole = $_row4['role']; $myId = (int)$_row4['id']; }
+    }
+    $myLevel = $roleLevels[$myRole] ?? 2;
+
+    if ($myId && $targetId === $myId) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Cannot delete your own account']); exit;
+    }
+    $target2 = $pdo->prepare("SELECT role FROM users WHERE id = ?");
+    $target2->execute([$targetId]);
+    $targetUser2 = $target2->fetch(PDO::FETCH_ASSOC);
+    if (!$targetUser2) {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']); exit;
+    }
+    $targetLevel2 = $roleLevels[$targetUser2['role']] ?? 99;
+    if ($myRole !== 'superroot') {
+        if ($myLevel <= 2) {
+            // Admin: can delete same level and below
+            if ($targetLevel2 < $myLevel) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Cannot delete user with higher privilege']); exit;
+            }
+        } else {
+            // Operator+: can only delete lower privilege
+            if ($targetLevel2 <= $myLevel) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Cannot delete user with same or higher privilege']); exit;
+            }
+        }
+    }
+    $pdo->prepare("DELETE FROM user_servers WHERE user_id = ?")->execute([$targetId]);
+    $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$targetId]);
+            logSystemEvent($pdo, $currentUserId, null, 'security', 'delete', 'user', "Deleted user id={$id}", ['id' => $id]);
+        echo json_encode(['success' => true, 'message' => 'User deleted']); exit;
+}
+// ── End custom /v1/users handlers ─────────────────────────────────────────
+
+// ── GET /v1/roles ──────────────────────────────────────────────────────────
+if ($resource === 'roles' && $method === 'GET' && !$id) {
+    $_rlHeaders = function_exists('getallheaders') ? getallheaders() : [];
+    $_rlAuthH   = $_rlHeaders['Authorization'] ?? $_rlHeaders['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $_rlLevel   = 99;
+    if (preg_match('/Bearer\s+(.+)/i', $_rlAuthH, $_rlTok)) {
+        $_rlStmt = $pdo->prepare(
+            "SELECT COALESCE(r.level, 99) AS my_level
+             FROM users u LEFT JOIN roles r ON u.role = r.name
+             WHERE u.remember_token = ? AND u.is_active = 1"
+        );
+        $_rlStmt->execute([trim($_rlTok[1])]);
+        $_rlRow = $_rlStmt->fetch(PDO::FETCH_ASSOC);
+        if ($_rlRow) $_rlLevel = (int)$_rlRow['my_level'];
+    }
+    $rlStmt = $pdo->prepare("SELECT name, level, is_builtin FROM roles WHERE level >= ? ORDER BY level ASC");
+    $rlStmt->execute([$_rlLevel]);
+    echo json_encode(['data' => $rlStmt->fetchAll(PDO::FETCH_ASSOC)]);
+    exit;
+}
+
+// ── POST /v1/roles ─────────────────────────────────────────────────────────
+if ($resource === 'roles' && $method === 'POST' && !$id) {
+    $_crHeaders = function_exists('getallheaders') ? getallheaders() : [];
+    $_crAuthH   = $_crHeaders['Authorization'] ?? $_crHeaders['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $_crLevel   = 99;
+    if (preg_match('/Bearer\s+(.+)/i', $_crAuthH, $_crTok)) {
+        $_crStmt = $pdo->prepare(
+            "SELECT COALESCE(r.level, 99) AS my_level
+             FROM users u LEFT JOIN roles r ON u.role = r.name
+             WHERE u.remember_token = ? AND u.is_active = 1"
+        );
+        $_crStmt->execute([trim($_crTok[1])]);
+        $_crRow = $_crStmt->fetch(PDO::FETCH_ASSOC);
+        if ($_crRow) $_crLevel = (int)$_crRow['my_level'];
+    }
+    $crName  = trim($input['name'] ?? '');
+    $crLevel = 3;
+    if (!$crName || !preg_match('/^[a-z0-9_]+$/', $crName)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid role name (lowercase letters, numbers, underscores only)']); exit;
+    }
+    if ($crLevel < $_crLevel) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Cannot create role with higher privilege than yours']); exit;
+    }
+    $chkRl = $pdo->prepare("SELECT name FROM roles WHERE name = ?");
+    $chkRl->execute([$crName]);
+    if ($chkRl->fetch()) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Role already exists']); exit;
+    }
+    $pdo->prepare("INSERT INTO roles (name, level, is_builtin) VALUES (?, ?, 0)")->execute([$crName, $crLevel]);
+    http_response_code(201);
+        logSystemEvent($pdo, $currentUserId, null, 'security', 'create', 'role', "Created role: $crName (level=$crLevel)", ['name' => $crName, 'level' => $crLevel]);
+    echo json_encode(['success' => true, 'message' => 'Role created', 'name' => $crName]); exit;
+}
+
+// ── DELETE /v1/roles/{name} ────────────────────────────────────────────────
+if ($resource === 'roles' && $method === 'DELETE' && $id) {
+    $_drHeaders = function_exists('getallheaders') ? getallheaders() : [];
+    $_drAuthH   = $_drHeaders['Authorization'] ?? $_drHeaders['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $_drLevel   = 99;
+    if (preg_match('/Bearer\s+(.+)/i', $_drAuthH, $_drTok)) {
+        $_drStmt = $pdo->prepare(
+            "SELECT COALESCE(r.level, 99) AS my_level
+             FROM users u LEFT JOIN roles r ON u.role = r.name
+             WHERE u.remember_token = ? AND u.is_active = 1"
+        );
+        $_drStmt->execute([trim($_drTok[1])]);
+        $_drRow = $_drStmt->fetch(PDO::FETCH_ASSOC);
+        if ($_drRow) $_drLevel = (int)$_drRow['my_level'];
+    }
+    $drName = $id;
+    $chkBi = $pdo->prepare("SELECT is_builtin, level FROM roles WHERE name = ?");
+    $chkBi->execute([$drName]);
+    $biRow = $chkBi->fetch(PDO::FETCH_ASSOC);
+    if (!$biRow) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Role not found']); exit;
+    }
+    if ($biRow['is_builtin']) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Cannot delete built-in role']); exit;
+    }
+    if ((int)$biRow['level'] < $_drLevel) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Cannot delete role with higher privilege than yours']); exit;
+    }
+    $chkUsr = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role = ?");
+    $chkUsr->execute([$drName]);
+    if ((int)$chkUsr->fetchColumn() > 0) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Cannot delete: users are still assigned to this role']); exit;
+    }
+    $pdo->prepare("DELETE FROM roles WHERE name = ? AND is_builtin = 0")->execute([$drName]);
+    logSystemEvent($pdo, $currentUserId, null, 'security', 'delete', 'role', "Deleted role: $drName", ['role' => $drName]);
+    echo json_encode(['success' => true, 'message' => 'Role deleted']); exit;
+}
+// ── End custom /v1/roles handlers ─────────────────────────────────────────
+
+// ── Custom GET /v1/sbcs with AMI registration status ──────────────────────
+if ($resource === 'sbcs' && $method === 'GET' && $id === null) {
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    try {
+        $query = "SELECT s.*, cs.name as call_server_name FROM sbcs s LEFT JOIN call_servers cs ON s.call_server_id = cs.id";
+        $params = [];
+        if (isset($_GET['call_server_id']) && $_GET['call_server_id']) {
+            $query .= " WHERE s.call_server_id = ?";
+            $params[] = $_GET['call_server_id'];
+        }
+        $query .= " ORDER BY s.id DESC";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute($params);
+        $sbcs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Only query AMI if ?live=1 is passed (AMI queries take ~15s)
+        $doLive = !empty($_GET["live"]);
+
+        // Query Asterisk AMI for registration + contact statuses
+        $contactStatuses = [];
+        $registrationStatuses = [];
+        $activeCalls = [];
+        if ($doLive) {
+        try {
+            $ami = @fsockopen('127.0.0.1', 5038, $errno, $errstr, 3);
+            if ($ami) {
+                stream_set_timeout($ami, 5);
+                fgets($ami, 256); // Read greeting
+
+                fputs($ami, "Action: Login\r\nUsername: smartcms\r\nSecret: smartcms_ami_secret_2026\r\n\r\n");
+                $buf = ''; $t = microtime(true) + 4;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $buf .= fgets($ami, 512);
+                    if (substr_count($buf, "\r\n\r\n") >= 1) break;
+                }
+
+                // Get outbound registration statuses
+                fputs($ami, "Action: Command\r\nCommand: pjsip show registrations\r\nActionID: sbcreg\r\n\r\n");
+                $regOut = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $regOut .= fgets($ami, 4096);
+                    if (strpos($regOut, '--END COMMAND--') !== false) break;
+                }
+                foreach (explode("\n", $regOut) as $line) {
+                    // Match: sbc-50/sip:10191@103.154.80.166:3160   sbc-50   Rejected
+                    if (preg_match('/^\s*(sbc-\d+)\/\S+\s+\S+\s+(Registered|Unregistered|Rejected|Stopped)\b/', $line, $m)) {
+                        $registrationStatuses[$m[1]] = $m[2];
+                    }
+                }
+
+                // Get contact statuses (Avail/Unavail/NonQual/Unmonitored)
+                fputs($ami, "Action: Command\r\nCommand: pjsip show contacts\r\nActionID: sbccon\r\n\r\n");
+                $conOut = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $conOut .= fgets($ami, 4096);
+                    if (strpos($conOut, '--END COMMAND--') !== false) break;
+                }
+                foreach (explode("\n", $conOut) as $line) {
+                    if (preg_match('/Contact:\s+(sbc-\d+)\/(\S+)\s+\S+\s+(Avail|Unavail|NonQual|Unmonitored)\s+([\d.nan]+)/', $line, $m)) {
+                        $contactStatuses[$m[1]] = [
+                            'status' => $m[3],
+                            'uri' => $m[2],
+                            'rtt' => $m[4],
+                        ];
+                    }
+                }
+
+                // Get active channels per SBC endpoint
+                fputs($ami, "Action: Command\r\nCommand: core show channels verbose\r\nActionID: sbcch\r\n\r\n");
+                $chOut = ''; $t = microtime(true) + 5;
+                while (!feof($ami) && microtime(true) < $t) {
+                    $chOut .= fgets($ami, 4096);
+                    if (strpos($chOut, '--END COMMAND--') !== false) break;
+                }
+                $activeCalls = [];
+                foreach (explode("\n", $chOut) as $line) {
+                    if (preg_match('/PJSIP\/(sbc-\d+)-/', $line, $m)) {
+                        $activeCalls[$m[1]] = ($activeCalls[$m[1]] ?? 0) + 1;
+                    }
+                }
+
+                fputs($ami, "Action: Logoff\r\n\r\n");
+                fclose($ami);
+            }
+        } catch (Exception $e) { /* AMI unavailable, use defaults */ }
+        } // end if ($doLive)
+
+        // Enrich SBC records with AMI status
+        $result = [];
+        foreach ($sbcs as $sbc) {
+            $ep = 'sbc-' . $sbc['id'];
+            $regType = $sbc['registration'] ?? 'none'; // none, send, receive
+
+            // Determine registration_state
+            $regState = 'N/A';
+            if ($regType === 'send') {
+                $regState = $registrationStatuses[$ep] ?? 'Unregistered';
+            } elseif ($regType === 'receive') {
+                // For receive, check if contact exists
+                $regState = isset($contactStatuses[$ep]) ? 'Registered' : 'Unregistered';
+            }
+
+            // Determine contact_status
+            $contactStatus = 'Unknown';
+            $contactUri = null;
+            $latency = null;
+            if (isset($contactStatuses[$ep])) {
+                $cs = $contactStatuses[$ep];
+                $contactUri = $cs['uri'] ?? null;
+                $rttVal = $cs['rtt'] ?? 'nan';
+                $latency = ($rttVal !== 'nan') ? round(floatval($rttVal), 2) : null;
+
+                switch ($cs['status']) {
+                    case 'Avail': $contactStatus = 'Reachable'; break;
+                    case 'NonQual': $contactStatus = 'Reachable (NonQual)'; break;
+                    case 'Unmonitored': $contactStatus = 'Reachable (Unmonitored)'; break;
+                    case 'Unavail': $contactStatus = 'Unreachable'; break;
+                    default: $contactStatus = $cs['status'];
+                }
+            } elseif ($sbc['disabled']) {
+                $contactStatus = 'Disabled';
+            }
+
+            $sbc['registration_state'] = $regState;
+            $sbc['contact_status'] = $contactStatus;
+            $sbc['contact_uri'] = $contactUri;
+            $sbc['latency_ms'] = $latency;
+            $sbc['active_calls'] = $activeCalls[$ep] ?? 0;
+            $sbc['call_server_name'] = $sbc['call_server_name'] ?? null;
+
+            $result[] = $sbc;
+        }
+
+        echo json_encode(['data' => $result, 'total' => count($result)]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+    exit;
+}
+// ── End custom GET /v1/sbcs ───────────────────────────────────────────────
+
 if (!$table) {
     http_response_code(404);
     echo json_encode(['error' => 'Resource not found', 'resource' => $resource]);
@@ -1588,13 +2651,18 @@ if (!$table) {
 
 // Resolve current logged-in user from Bearer token (for activity logging)
 $currentUserId = null;
+$currentUserLevel = 99;
 try {
     $_allH = function_exists('getallheaders') ? getallheaders() : [];
     $_authH = $_allH['Authorization'] ?? $_allH['authorization'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (preg_match('/Bearer\s+(.+)/i', $_authH, $_mTok)) {
-        $_us = $pdo->prepare("SELECT id FROM users WHERE remember_token = ?");
+        $_us = $pdo->prepare("SELECT u.id, COALESCE(r.level, 99) AS role_level FROM users u LEFT JOIN roles r ON r.name = u.role WHERE u.remember_token = ?");
         $_us->execute([trim($_mTok[1])]);
-        $currentUserId = $_us->fetchColumn() ?: null;
+        $_uRow = $_us->fetch(PDO::FETCH_ASSOC);
+        if ($_uRow) {
+            $currentUserId = (int)$_uRow['id'];
+            $currentUserLevel = (int)$_uRow['role_level'];
+        }
     }
 } catch (Exception $_e) {}
 
@@ -1702,7 +2770,11 @@ try {
                 }
                 // Count total
                 if ($table === 'activity_logs') {
-                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `activity_logs` al $where");
+                    // Filter by role hierarchy — only show logs from users at same or lower level
+                    $levelOp = $where ? " AND " : " WHERE ";
+                    $where .= "{$levelOp}COALESCE(r.level, 99) >= ?";
+                    $params[] = $currentUserLevel;
+                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `activity_logs` al LEFT JOIN users u ON al.user_id = u.id LEFT JOIN roles r ON r.name = u.role $where");
                 } else {
                     $countStmt = $pdo->prepare("SELECT COUNT(*) FROM `$table` $where");
                 }
@@ -1711,7 +2783,7 @@ try {
 
                 // Get data
                 if ($table === 'activity_logs') {
-                    $sql = "SELECT al.*, u.id AS u_id, u.name AS u_name, u.email AS u_email FROM `activity_logs` al LEFT JOIN users u ON al.user_id = u.id $where ORDER BY al.id DESC LIMIT $perPage OFFSET $offset";
+                    $sql = "SELECT al.*, u.id AS u_id, u.name AS u_name, u.email AS u_email, u.role AS u_role FROM `activity_logs` al LEFT JOIN users u ON al.user_id = u.id LEFT JOIN roles r ON r.name = u.role $where ORDER BY al.id DESC LIMIT $perPage OFFSET $offset";
                 } else {
                     $sql = "SELECT * FROM `$table` $where ORDER BY id DESC LIMIT $perPage OFFSET $offset";
                 }
@@ -1727,11 +2799,12 @@ try {
                                 'id'    => $row['u_id'],
                                 'name'  => $row['u_name'],
                                 'email' => $row['u_email'],
+                                'role'  => $row['u_role'] ?? null,
                             ];
                         } else {
                             $row['user'] = null;
                         }
-                        unset($row['u_id'], $row['u_name'], $row['u_email']);
+                        unset($row['u_id'], $row['u_name'], $row['u_email'], $row['u_role']);
                     }
                     unset($row);
                 }
@@ -1986,6 +3059,16 @@ try {
                 if (isset($filteredInput['dial_patterns']))
                     unset($filteredInput['dial_patterns']);
 
+                // Force correct context for SBCs — always 'from-sbc' regardless of payload
+                if ($table === 'sbcs') {
+                    $filteredInput['context'] = 'from-sbc';
+                }
+
+                // Force correct context for Trunks
+                if ($table === 'trunks') {
+                    $filteredInput['context'] = 'from-pstn';
+                }
+
                 // Fetch old data before update (for old_values in activity log)
                 $oldData = null;
                 if ($method !== 'POST' && $id) {
@@ -1994,6 +3077,32 @@ try {
                         $_os->execute([$id]);
                         $oldData = $_os->fetch(PDO::FETCH_ASSOC) ?: null;
                     } catch (Exception $_e) {}
+                }
+
+                // Validate required fields for SBC/Trunk creation
+                $ipDupeWarning = null;
+                if ($method === 'POST' && in_array($table, ['sbcs', 'trunks'])) {
+                    $reqFields = [];
+                    if (empty($filteredInput['name'])) $reqFields[] = 'name';
+                    if (empty($filteredInput['sip_server'])) $reqFields[] = 'sip_server';
+                    if (empty($filteredInput['sip_server_port'])) $reqFields[] = 'sip_server_port';
+                    if (!empty($reqFields)) {
+                        http_response_code(400);
+                        echo json_encode(['error' => 'Missing required fields: ' . implode(', ', $reqFields)]);
+                        exit;
+                    }
+                    $checkIp = $filteredInput['sip_server'];
+                    $checkPort = $filteredInput['sip_server_port'];
+                    $dupeStmt = $pdo->prepare("SELECT id, name, 'sbc' as type FROM sbcs WHERE sip_server = ? AND sip_server_port = ? UNION ALL SELECT id, name, 'trunk' as type FROM trunks WHERE sip_server = ? AND sip_server_port = ?");
+                    $dupeStmt->execute([$checkIp, $checkPort, $checkIp, $checkPort]);
+                    $dupes = $dupeStmt->fetchAll(PDO::FETCH_ASSOC);
+                    if (!empty($dupes)) {
+                        $dupeInfo = [];
+                        foreach ($dupes as $d) {
+                            $dupeInfo[] = $d['type'] . " '" . $d['name'] . "' (id=" . $d['id'] . ")";
+                        }
+                        $ipDupeWarning = 'IP ' . $checkIp . ':' . $checkPort . ' sudah dipakai oleh ' . implode(', ', $dupeInfo) . '. Inbound calls dari IP ini akan di-identify ke endpoint pertama.';
+                    }
                 }
 
                 if ($method === 'POST') {
@@ -2011,6 +3120,14 @@ try {
                             $__l = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, new_values) VALUES (?, 'created', ?, ?, ?, ?, ?)");
                             $__l->execute([$currentUserId, $table, $dataId, $_ip, $_ua, json_encode($filteredInput)]);
                         } catch (Exception $_e) {}
+                        // System log for key tables
+                        $_sysLogTables = ['trunks', 'sbcs', 'sbc_routes', 'inbound_routings', 'outbound_routings', 'call_servers', 'extensions', 'lines', 'device_vpws', 'device_cas', 'device_intercoms', 'device_3rd_parties'];
+                        if (in_array($table, $_sysLogTables)) {
+                            $_catMap = ['trunks'=>'telephony','sbcs'=>'telephony','sbc_routes'=>'telephony','inbound_routings'=>'telephony','outbound_routings'=>'telephony','call_servers'=>'telephony','extensions'=>'device','lines'=>'device','device_vpws'=>'device','device_cas'=>'device','device_intercoms'=>'device','device_3rd_parties'=>'device'];
+                            $_cat = $_catMap[$table] ?? 'system';
+                            $_nm = $filteredInput['name'] ?? $filteredInput['did_number'] ?? $filteredInput['extension_number'] ?? $filteredInput['number'] ?? "#{$dataId}";
+                            logSystemEvent($pdo, $currentUserId, null, $_cat, 'create', $table, "Created {$table}: {$_nm}", $filteredInput);
+                        }
                     }
                 } else {
                     $sets = [];
@@ -2032,6 +3149,14 @@ try {
                             $__l = $pdo->prepare("INSERT INTO `activity_logs` (user_id, action, entity_type, entity_id, ip_address, user_agent, old_values, new_values) VALUES (?, 'updated', ?, ?, ?, ?, ?, ?)");
                             $__l->execute([$currentUserId, $table, $id, $_ip, $_ua, $oldData ? json_encode($oldData) : null, json_encode($filteredInput)]);
                         } catch (Exception $_e) {}
+                        // System log for key tables
+                        $_sysLogTables = ['trunks', 'sbcs', 'sbc_routes', 'inbound_routings', 'outbound_routings', 'call_servers', 'extensions', 'lines', 'device_vpws', 'device_cas', 'device_intercoms', 'device_3rd_parties'];
+                        if (in_array($table, $_sysLogTables)) {
+                            $_catMap = ['trunks'=>'telephony','sbcs'=>'telephony','sbc_routes'=>'telephony','inbound_routings'=>'telephony','outbound_routings'=>'telephony','call_servers'=>'telephony','extensions'=>'device','lines'=>'device','device_vpws'=>'device','device_cas'=>'device','device_intercoms'=>'device','device_3rd_parties'=>'device'];
+                            $_cat = $_catMap[$table] ?? 'system';
+                            $_nm = $filteredInput['name'] ?? $oldData['name'] ?? "#{$id}";
+                            logSystemEvent($pdo, $currentUserId, null, $_cat, 'update', $table, "Updated {$table}: {$_nm}", ['old' => $oldData, 'new' => $filteredInput]);
+                        }
                     }
                 }
 
@@ -2083,8 +3208,21 @@ try {
                 $stmt2->execute([$dataId]);
                 $finalData = $stmt2->fetch(PDO::FETCH_ASSOC);
 
+                // Auto-reload Asterisk for telephony table changes
+                $asteriskReloadTables = ['sbcs', 'trunks', 'sbc_routes', 'inbound_routings', 'outbound_routings'];
+                if (in_array($table, $asteriskReloadTables)) {
+                    reloadAsterisk();
+                }
+
                 http_response_code($method === 'POST' ? 201 : 200);
-                echo json_encode(['message' => ($method === 'POST' ? 'Created' : 'Updated') . ' successfully', 'data' => $finalData]);
+                $response = ['message' => ($method === 'POST' ? 'Created' : 'Updated') . ' successfully', 'data' => $finalData];
+                if (in_array($table, $asteriskReloadTables)) {
+                    $response['asterisk_reload'] = true;
+                }
+                if (!empty($ipDupeWarning)) {
+                    $response['warning'] = $ipDupeWarning;
+                }
+                echo json_encode($response);
             } catch (Exception $e) {
                 http_response_code(500);
                 echo json_encode(['error' => 'Database error: ' . $e->getMessage(), 'sql' => $sql ?? 'N/A']);
@@ -2115,8 +3253,20 @@ try {
                     $__l->execute([$currentUserId, $table, $id, $_ip, $_ua]);
                 } catch (Exception $_e) {}
             }
+                // System log for key tables
+                $_sysLogTables = ['trunks', 'sbcs', 'sbc_routes', 'inbound_routings', 'outbound_routings', 'call_servers', 'extensions', 'lines', 'device_vpws', 'device_cas', 'device_intercoms', 'device_3rd_parties'];
+                if (in_array($table, $_sysLogTables)) {
+                    $_catMap = ['trunks'=>'telephony','sbcs'=>'telephony','sbc_routes'=>'telephony','inbound_routings'=>'telephony','outbound_routings'=>'telephony','call_servers'=>'telephony','extensions'=>'device','lines'=>'device','device_vpws'=>'device','device_cas'=>'device','device_intercoms'=>'device','device_3rd_parties'=>'device'];
+                    $_cat = $_catMap[$table] ?? 'system';
+                    logSystemEvent($pdo, $currentUserId, null, $_cat, 'delete', $table, "Deleted {$table} id={$id}", ['id' => $id]);
+                }
 
-            echo json_encode(['message' => 'Deleted successfully']);
+            // Auto-reload Asterisk for telephony table changes
+            if (in_array($table, ['sbcs', 'trunks', 'sbc_routes', 'inbound_routings', 'outbound_routings'])) {
+                reloadAsterisk();
+            }
+
+            echo json_encode(['message' => 'Deleted successfully', 'asterisk_reload' => in_array($table, ['sbcs', 'trunks', 'sbc_routes', 'inbound_routings', 'outbound_routings'])]);
             break;
 
         default:
